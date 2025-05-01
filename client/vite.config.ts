@@ -17,7 +17,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectManifest: {
         swSrc: "src/sw.ts",
-        swDest: "dist/sw.js"
+        swDest: "dist/sw.js",
+        maximumFileSizeToCacheInBytes: 5000000
       },
       manifest: {
         name: "Clinic Management",
