@@ -4,6 +4,7 @@ import { customValidator } from "../utils/validator"
 import { IUserProtected } from "../utils/protected"
 import { Patient } from "../models/Patient"
 import { patientRules } from "../rules/patient.rules"
+import { io } from "../utils/socket"
 
 // Get All
 export const getAllPatients = asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -83,6 +84,8 @@ export const addPatient = asyncHandler(async (req: Request, res: Response, next:
     }
 
     const result = await Patient.create(data)
+
+    io.emit("add-patient", result)
 
     res.status(200).json({ message: "Patient Add Successfully", result })
 })

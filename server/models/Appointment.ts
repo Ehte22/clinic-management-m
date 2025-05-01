@@ -9,7 +9,7 @@ export interface IAppointment {
     reason: string;
     status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
     payment: {
-        amount: string;
+        amount: number;
         method: 'cash' | 'card' | 'online';
         status: 'paid' | 'unpaid';
     };
@@ -35,7 +35,7 @@ const appointmentSchema = new Schema<IAppointment>(
             default: 'scheduled',
         },
         payment: {
-            amount: { type: String },
+            amount: { type: Number, default: 0 },
             method: {
                 type: String,
                 enum: ['cash', 'card', 'online'],

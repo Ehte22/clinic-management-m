@@ -145,7 +145,10 @@ const AddDoctor = () => {
             setValue("qualification", doctor.qualification)
             setValue("emergency_contact", doctor.emergency_contact)
             setValue("bio", doctor.bio)
-            setValue("schedule", doctor.schedule)
+
+            if ((doctor.schedule?.length as number) > 0) {
+                setValue("schedule", doctor.schedule)
+            }
         }
     }, [id, doctor])
 

@@ -55,17 +55,28 @@ const UserDashBoard = () => {
 
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+    const oldPatientsData = new Array(12).fill(0);
+    const newPatientsData = new Array(12).fill(0);
+
+    patientData.forEach((item: any) => {
+        const index = item.month - 1;
+        newPatientsData[index] = item.newPatients;
+        oldPatientsData[index] = item.oldPatients;
+    });
+
     const patients = {
         labels: months,
         datasets: [
             {
                 label: 'Old Patients',
-                data: patientData.map((item: any) => item.oldPatients),
-                backgroundColor: 'rgba(53, 162, 235, 0.5)',
+                data: oldPatientsData,
+                backgroundColor: 'rgba(53, 162, 235, 0.6)',
+                borderColor: "rgba(53, 162, 235, 1)",
+                borderWidth: 1,
             },
             {
                 label: 'New Patients',
-                data: patientData.map((item: any) => item.newPatients),
+                data: newPatientsData,
                 backgroundColor: "rgba(7, 114, 237, 0.6)",
                 borderColor: "rgba(7, 114, 237, 1)",
                 borderWidth: 1,

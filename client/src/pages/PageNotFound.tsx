@@ -1,21 +1,30 @@
-import { Link } from "react-router-dom";
+import { Container, Typography, Button, Box } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 const PageNotFound = () => {
+    const navigate = useNavigate();
+
     return (
-        <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-            <h1 className="text-6xl font-bold text-indigo-600">404</h1>
-            <p className="text-xl text-gray-700 mt-4">Page Not Found</p>
-            <p className="text-gray-500 mt-2 text-center">
-                Sorry, the page you are looking for does not exist. <br />
-                You can always go back to the home page.
-            </p>
-            <Link
-                to="/"
-                className="mt-6 px-6 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-full shadow-md transition-all"
-            >
-                Go Back Home
-            </Link>
-        </div>
+        <Container maxWidth="md" sx={{ textAlign: "center", marginTop: "10vh" }}>
+            <Box>
+                <Typography variant="h1" color="primary" gutterBottom>
+                    404
+                </Typography>
+                <Typography variant="h5" gutterBottom>
+                    Oops! The page you're looking for doesn't exist.
+                </Typography>
+                <Typography variant="body1" color="textSecondary" paragraph>
+                    It seems like you've hit a dead end. Try going back to the home page.
+                </Typography>
+                <Button
+                    variant="contained"
+                    onClick={() => navigate("/")}
+                    sx={{ mt: 2, backgroundColor: "#00c979", color: "white" }}
+                >
+                    Go Home
+                </Button>
+            </Box>
+        </Container>
     );
 };
 

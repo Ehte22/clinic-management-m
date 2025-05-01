@@ -11,6 +11,10 @@ import { IAppointment } from "../../models/appointment.interface"
 import { useAddAppointmentMutation, useGetAppointmentByIdQuery, useUpdateAppointmentMutation } from "../../redux/apis/appointment.api"
 import { useGetDoctorsQuery } from "../../redux/apis/doctor.api"
 import { useGetPatientsQuery } from "../../redux/apis/patientApi"
+import { io } from "socket.io-client"
+const socket = io(import.meta.env.VITE_BACKEND_URL, {
+    transports: ["polling"]
+})
 
 const AddAppointment = () => {
     const [appointment, setAppointment] = useState<IAppointment | null>(null)
@@ -151,7 +155,7 @@ const AddAppointment = () => {
         },
         payment: {
             method: "cash",
-            amount: "",
+            amount: "0",
             status: "unpaid",
         },
         button: ""
@@ -207,6 +211,17 @@ const AddAppointment = () => {
         }
 
     }, [isPatientFetchSuccess])
+
+    useEffect(() => {
+        socket.on('add-patient', (patient) => {
+            const x = { label: patient.name, value: patient._id }
+            setPatientOptions((prev) => [x, ...prev])
+        });
+
+        return () => {
+            socket.off('add-patient');
+        };
+    }, [])
 
 
     useEffect(() => {

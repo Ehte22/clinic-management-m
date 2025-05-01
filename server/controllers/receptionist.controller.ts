@@ -9,6 +9,8 @@ import mongoose from "mongoose"
 import { generatePassword } from "../utils/generatePassword"
 import cloudinary from "../utils/uploadConfig"
 import bcryptjs from "bcryptjs"
+import { welcomeTemplate } from "../templates/welcomeTemplate"
+import { sendEmail } from "../utils/email"
 
 // Get All
 export const getAllReceptionists = asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -131,10 +133,18 @@ export const addReceptionist = asyncHandler(async (req: Request, res: Response, 
 
         await Receptionist.create([{ user: userId, clinic: clinicId, schedule }], { session })
 
+        const welcomeTemp = welcomeTemplate({ firstName, lastName, email, password: generatedPassword })
+
+        await sendEmail({
+            to: email,
+            subject: "Welcome to Our Service",
+            text: welcomeTemp
+        });
+
         await session.commitTransaction();
         session.endSession();
 
-        res.status(200).json({ message: "Receptionist Add Successfully" })
+        res.status(200).json({ message: "Receptionist registered and email sent successfully" })
     } catch (error: any) {
         await session.abortTransaction()
         session.endSession()

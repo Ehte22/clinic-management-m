@@ -146,7 +146,7 @@ export const createUser = asyncHandler(async (req: Request, res: Response, next:
         const result = await User.create({ ...data, password: hashPassword })
 
         if (result && result.role === "Clinic Admin") {
-            await Doctor.create({ clinic: clinicId, doctor: result._id })
+            await Doctor.create({ clinic: clinicId, user: result._id })
         }
 
         const welcomeTemp = welcomeTemplate({ firstName, lastName, email, password: generatedPassword })

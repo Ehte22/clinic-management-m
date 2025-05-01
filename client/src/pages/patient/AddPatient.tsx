@@ -9,6 +9,10 @@ import DataContainer, { DataContainerConfig } from "../../components/DataContain
 import Toast from "../../components/Toast"
 import { IPatient } from "../../models/patient.interface"
 import { useAddPatientMutation, useGetPatientByIdQuery, useUpdatePatientMutation } from "../../redux/apis/patientApi"
+import { io } from "socket.io-client"
+const socket = io(import.meta.env.VITE_BACKEND_URL, {
+    transports: ["polling"]
+})
 
 const AddPatient = () => {
     const [patient, setPatient] = useState<IPatient | null>(null)
@@ -201,6 +205,7 @@ const AddPatient = () => {
         } else {
             if (navigator.onLine) {
                 addPatient(data as IPatient)
+                socket.emit("new-patient", data)
             } else {
                 idbHelpers.add({ storeName: "patients", endpoint: "patient/create-patient", data: { ...data, status: "active" } })
             }

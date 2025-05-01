@@ -40,7 +40,6 @@ const Doctors = () => {
         selectedClinic
     })
     const [updateStatus, { data: statusMessage, error: statusError, isSuccess: statusUpdateSuccess, isError: statusUpdateError }] = useUpdateUserStatusMutation()
-    console.log(data?.result);
 
     const columns: GridColDef[] = [
         { field: 'serialNo', headerName: 'Sr. No.', minWidth: 70, flex: 0.4 },

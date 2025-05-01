@@ -17,13 +17,13 @@ export interface IDoctor {
 
 const doctorSchema = new Schema<IDoctor>({
     user: {
-        type: mongoose.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         required: true,
         ref: 'User',
 
     },
     clinic: {
-        type: mongoose.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         required: true,
         ref: 'Clinic',
     },

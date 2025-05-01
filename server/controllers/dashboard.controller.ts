@@ -24,77 +24,63 @@ export const clinicAdminDashboard = asyncHandler(async (req: Request, res: Respo
                 clinic,
                 deletedAt: { $eq: null },
                 createdAt: { $gte: startOfYear, $lte: endOfYear }
-            },
+            }
         },
-
         {
             $addFields: {
                 visitMonth: { $month: "$createdAt" },
-                visitYear: { $year: "$createdAt" },
-            },
+                visitYear: { $year: "$createdAt" }
+            }
         },
-
-        {
-            $group: {
-                _id: {
-                    contactInfo: "$contactInfo",
-                    year: "$visitYear",
-                    month: "$visitMonth",
-                },
-                firstVisitDate: { $min: "$createdAt" },
-            },
-        },
-
         {
             $lookup: {
                 from: "patients",
-                localField: "_id.contactInfo",
-                foreignField: "contactInfo",
-                as: "patientDetails",
-            },
+                let: { contactInfo: "$contactInfo" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: { $eq: ["$contactInfo", "$$contactInfo"] },
+                            deletedAt: { $eq: null }
+                        }
+                    },
+                    { $sort: { createdAt: 1 } },
+                    { $limit: 1 }
+                ],
+                as: "firstVisit"
+            }
         },
-
         {
-            $unwind: "$patientDetails",
+            $unwind: "$firstVisit"
         },
-
         {
             $addFields: {
                 isNewPatient: {
-                    $cond: [
-                        { $eq: ["$patientDetails.createdAt", "$firstVisitDate"] },
-                        true,
-                        false,
-                    ],
-                },
-            },
+                    $eq: [
+                        { $toLong: "$createdAt" },
+                        { $toLong: "$firstVisit.createdAt" }
+                    ]
+                }
+            }
         },
-
         {
             $group: {
-                _id: { year: "$_id.year", month: "$_id.month" },
-                newPatients: {
-                    $sum: { $cond: [{ $eq: ["$isNewPatient", true] }, 1, 0] },
-                },
-                oldPatients: {
-                    $sum: { $cond: [{ $eq: ["$isNewPatient", false] }, 1, 0] },
-                },
-            },
+                _id: { year: "$visitYear", month: "$visitMonth" },
+                newPatients: { $sum: { $cond: ["$isNewPatient", 1, 0] } },
+                oldPatients: { $sum: { $cond: ["$isNewPatient", 0, 1] } }
+            }
         },
-
         {
-            $sort: { "_id.year": 1, "_id.month": 1 },
+            $sort: { "_id.year": 1, "_id.month": 1 }
         },
-
         {
             $project: {
                 year: "$_id.year",
                 month: "$_id.month",
                 newPatients: 1,
                 oldPatients: 1,
-                _id: 0,
-            },
-        },
+                _id: 0
+            }
+        }
     ]);
 
     const income = await Appointment.aggregate([
@@ -128,7 +114,6 @@ export const clinicAdminDashboard = asyncHandler(async (req: Request, res: Respo
             $sort: { month: 1 }
         }
     ])
-
 
     res.status(200).json({ message: "Clinic dashboard data fetch successfully", result: { income, patients } })
 })
@@ -165,9 +150,14 @@ export const dashboard = asyncHandler(async (req: Request, res: Response) => {
 
     const userCounts = await User.aggregate([
         {
+            $match: {
+                role: { $ne: "Super Admin" }
+            }
+        },
+        {
             $group: {
                 _id: "$status",
-                count: { $sum: 1 }
+                count: { $sum: 1 },
             }
         },
         {
