@@ -1,0 +1,20 @@
+import express from "express"
+import * as userController from "../controllers/user.controller"
+import multerMiddleware from "../utils/upload"
+import { protectedRoute, restrict } from "../utils/protected"
+import { cacheMiddleware } from "../utils/redisMiddleware"
+
+const upload = multerMiddleware()
+
+const userRouter = express.Router()
+
+userRouter
+    .get("/", protectedRoute, restrict(["Super Admin"]), cacheMiddleware, userController.getAllUsers)
+    .get("/:id", protectedRoute, cacheMiddleware, userController.getUserById)
+    .post("/add", protectedRoute, restrict(["Super Admin"]), upload.single("profile"), userController.createUser)
+    .put("/update/:id", protectedRoute, upload.single("profile"), userController.updateUser)
+    .put("/status/:id", protectedRoute, restrict(["Super Admin", "Clinic Admin"]), userController.updateUserStatus)
+    .put("/delete/:id", protectedRoute, restrict(["Super Admin"]), userController.deleteUser)
+    .post("/register-user", upload.single("profile"), userController.registerUser)
+
+export default userRouter
