@@ -1,7 +1,7 @@
 import { IUser } from "./user.interface";
 
 export interface IDoctor {
-    _id: string;
+    _id?: string;
     clinic?: string;
     user?: IUser;
     specialization?: string;

@@ -166,7 +166,7 @@ const AddUser = () => {
                 if (navigator.onLine) {
                     createUser(formData)
                 } else {
-                    idbHelpers.add({ storeName: "users", endpoint: "user/add-clinic", data: { ...updatedData, status: "active" }, isFormData: true })
+                    idbHelpers.add({ storeName: "users", endpoint: "user/add-user", data: { ...updatedData, status: "active" }, isFormData: true })
                 }
             } else {
                 setShowEmailError(true)

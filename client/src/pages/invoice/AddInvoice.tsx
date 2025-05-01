@@ -217,30 +217,13 @@ const AddInvoice = () => {
             setValue("discount", invoice.discount?.toString() || "")
             setValue("notes", invoice.notes)
             setValue("totalAmount", invoice.totalAmount)
-            // const invoiceItems = invoice.items.map(item => ({
-            //     ...item,
-            //     quantity: item.quantity.toString(),
-            //     unitPrice: item.unitPrice.toString(),
-            //     total: item.total.toString()
-            // }))
-            // setValue("items", invoiceItems)
-
-            if (invoice?.items?.length) {
-                const formattedItems = invoice.items.map(item => ({
-                    title: item.title || "",
-                    quantity: Number(item.quantity) || 0,
-                    unitPrice: Number(item.unitPrice) || 0,
-                    total: Number(item.total) || 0,
-                }));
-                setValue("items", formattedItems)
-            }
-
-
-            const updatedItems = invoice.items.map((item) => ({
+            const invoiceItems = invoice.items.map(item => ({
                 ...item,
-                total: +item.quantity * +item.unitPrice,
+                quantity: item.quantity.toString(),
+                unitPrice: item.unitPrice.toString(),
+                total: item.total.toString()
             }))
-            setValue("items", updatedItems)
+            setValue("items", invoiceItems)
 
         }
     }, [id, invoice])
