@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import useDynamicForm, { FieldConfig } from "../../hooks/useDynamicForm"
 import { customValidator } from "../../utils/validator"
 import { useNavigate, useParams } from "react-router-dom"
@@ -11,7 +11,7 @@ import { IMedicine } from "../../models/medicine.interface"
 import { useAddMedicineMutation, useGetMedicineByIdQuery, useUpdateMedicineMutation } from "../../redux/apis/medicineApi"
 import { useGetSuppliersQuery } from "../../redux/apis/supplier.api"
 
-const AddMedicine = () => {
+const AddMedicine = React.memo(() => {
   const [medicine, setMedicine] = useState<IMedicine | null>(null)
   const [supplierOptions, setSupplierOptions] = useState<{ label: string, value?: string }[]>([])
 
@@ -20,19 +20,19 @@ const AddMedicine = () => {
   const navigate = useNavigate()
 
   // Queries and Mutations
-  const [addMedicine, { data: addData, isLoading: addLoading, error: addError, isSuccess: isAddSuccess, isError: isAddError }] = useAddMedicineMutation()
+  const [addMedicine, add] = useAddMedicineMutation()
   const { data, isLoading, isFetching } = useGetMedicineByIdQuery(id || "", {
     skip: !id || !navigator.onLine
   })
-  const [updateMedicine, { data: updateData, isLoading: updateLoading, error: updateError, isSuccess: isUpdateSuccess, isError: isUpdateError }] = useUpdateMedicineMutation()
+  const [updateMedicine, update] = useUpdateMedicineMutation()
   const { data: suppliers, isSuccess: isSupplierFetchSuccess } = useGetSuppliersQuery({ isFetchAll: true })
 
-  const config: DataContainerConfig = {
+  const config: DataContainerConfig = useMemo(() => ({
     pageTitle: id ? "Edit Medicine" : "Add Medicine",
     backLink: "../",
-  }
+  }), [id])
 
-  const fields: FieldConfig[] = [
+  const fields: FieldConfig[] = useMemo(() => [
     {
       name: "medicineName",
       placeholder: "Name",
@@ -88,7 +88,7 @@ const AddMedicine = () => {
       options: supplierOptions,
       rules: { required: true }
     },
-  ]
+  ], [supplierOptions])
 
   const defaultValues = {
     medicineName: "",
@@ -102,34 +102,30 @@ const AddMedicine = () => {
     supplier: "",
   }
 
-  // Custom Validator
-  const schema = customValidator(fields)
-
-  type FormValues = z.infer<typeof schema>
-
   // Submit Function
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = useCallback(
+    (data: z.infer<ReturnType<typeof customValidator>>) => {
 
-    const medicineData = data as IMedicine
+      const medicineData = data as IMedicine
 
-    if (medicine && medicine._id) {
-      if (navigator.onLine) {
-        updateMedicine({ medicineData, id: medicine._id })
+      if (medicine && medicine._id) {
+        if (navigator.onLine) {
+          updateMedicine({ medicineData, id: medicine._id })
+        } else {
+          idbHelpers.update({ storeName: "medicines", endpoint: "medicine/update-medicine", _id: medicine._id, data })
+        }
       } else {
-        idbHelpers.update({ storeName: "medicines", endpoint: "medicine/update-medicine", _id: medicine._id, data })
+        if (navigator.onLine) {
+          addMedicine(medicineData)
+        } else {
+          idbHelpers.add({ storeName: "medicines", endpoint: "medicine/create-medicine", data: { ...data, status: "active" } })
+        }
       }
-    } else {
-      if (navigator.onLine) {
-        addMedicine(medicineData)
-      } else {
-        idbHelpers.add({ storeName: "medicines", endpoint: "medicine/create-medicine", data: { ...data, status: "active" } })
-      }
-    }
-  }
+    }, [medicine, addMedicine, updateMedicine])
 
   // Dynamic Form
   const { renderSingleInput, handleSubmit, setValue, reset }
-    = useDynamicForm({ schema, fields, onSubmit, defaultValues })
+    = useDynamicForm({ schema: customValidator(fields), fields, onSubmit, defaultValues })
 
   useEffect(() => {
     if (isSupplierFetchSuccess) {
@@ -172,29 +168,17 @@ const AddMedicine = () => {
   }, [id, medicine])
 
   useEffect(() => {
-    if (isAddSuccess) {
-      const timeout = setTimeout(() => {
-        navigate("/medicines")
-      }, 2000);
+    if (add.isSuccess || update.isSuccess) {
+      const timeout = setTimeout(() => navigate('/medicines'), 2000)
       return () => clearTimeout(timeout)
     }
-  }, [isAddSuccess])
-
-  useEffect(() => {
-    if (isUpdateSuccess) {
-      const timeout = setTimeout(() => {
-        navigate("/medicines")
-      }, 2000);
-      return () => clearTimeout(timeout)
-    }
-  }, [isUpdateSuccess])
+  }, [add.isSuccess, update.isSuccess, navigate])
 
   return <>
-    {isAddSuccess && <Toast type="success" message={addData?.message} />}
-    {isAddError && <Toast type="error" message={addError as string} />}
-
-    {isUpdateSuccess && <Toast type={updateData === "No Changes Detected" ? "info" : "success"} message={updateData as string} />}
-    {isUpdateError && <Toast type="error" message={updateError as string} />}
+    {add.isSuccess && <Toast type="success" message={add.data?.message} />}
+    {add.isError && <Toast type="error" message={String(add.error)} />}
+    {update.isSuccess && <Toast type={update.data === 'No Changes Detected' ? 'info' : 'success'} message={update.data} />}
+    {update.isError && <Toast type="error" message={String(update.error)} />}
 
     <Box>
       <DataContainer config={config} />
@@ -260,7 +244,7 @@ const AddMedicine = () => {
               Reset
             </Button>
             <Button
-              loading={id ? updateLoading : addLoading}
+              loading={add.isLoading || update.isLoading}
               type='submit'
               variant='contained'
               sx={{ ml: 2, background: "#0777de", color: "white", py: 0.65 }}>
@@ -271,7 +255,7 @@ const AddMedicine = () => {
       </Paper >
     </Box>
   </>
-}
+})
 
 export default AddMedicine
 

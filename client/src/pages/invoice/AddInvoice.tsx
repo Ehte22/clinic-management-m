@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import useDynamicForm, { FieldConfig } from "../../hooks/useDynamicForm"
 import { customValidator } from "../../utils/validator"
 import { useNavigate, useParams } from "react-router-dom"
@@ -11,7 +11,7 @@ import { IInvoice } from "../../models/invoice.interface"
 import { useAddInvoiceMutation, useGetInvoiceByIdQuery, useUpdateInvoiceMutation } from "../../redux/apis/invoiceApi"
 import { useGetAppointmentsQuery } from "../../redux/apis/appointment.api"
 
-const AddInvoice = () => {
+const AddInvoice = React.memo(() => {
     const [invoice, setInvoice] = useState<IInvoice | null>(null)
     const [appointmentOptions, setAppointmentOptions] = useState<{ label?: string, value?: string }[]>([])
     const [totalAmount, setTotalAmount] = useState<string>("")
@@ -21,19 +21,19 @@ const AddInvoice = () => {
     const navigate = useNavigate()
 
     // Queries and Mutations
-    const [addInvoice, { data: addData, isLoading: addLoading, error: addError, isSuccess: isAddSuccess, isError: isAddError }] = useAddInvoiceMutation()
+    const [addInvoice, add] = useAddInvoiceMutation()
     const { data, isLoading, isFetching } = useGetInvoiceByIdQuery(id || "", {
         skip: !id || !navigator.onLine
     })
-    const [updateInvoice, { data: updateData, isLoading: updateLoading, error: updateError, isSuccess: isUpdateSuccess, isError: isUpdateError }] = useUpdateInvoiceMutation()
+    const [updateInvoice, update] = useUpdateInvoiceMutation()
     const { data: appointments, isSuccess: isAppointmentsFetchSuccess } = useGetAppointmentsQuery({ isFetchAll: true })
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: id ? "Edit Invoice" : "Add Invoice",
         backLink: "../",
-    }
+    }), [id])
 
-    const fields: FieldConfig[] = [
+    const fields: FieldConfig[] = useMemo(() => [
         {
             name: "appointmentId",
             placeholder: "Appointment",
@@ -119,7 +119,7 @@ const AddInvoice = () => {
             rules: {}
         }
 
-    ]
+    ], [appointmentOptions])
 
     const defaultValues = {
         appointmentId: "",
@@ -135,13 +135,7 @@ const AddInvoice = () => {
         totalAmount: ""
     }
 
-    // Custom Validator
-    const schema = customValidator(fields)
-
-    type FormValues = z.infer<typeof schema>
-
-    // Submit Function
-    const onSubmit = (data: FormValues) => {
+    const onSubmit = useCallback((data: z.infer<ReturnType<typeof customValidator>>) => {
 
         const invoiceData = { ...data, totalAmount } as IInvoice
 
@@ -158,11 +152,11 @@ const AddInvoice = () => {
                 idbHelpers.add({ storeName: "invoices", endpoint: "invoice/create-invoice", data })
             }
         }
-    }
+    }, [invoice, totalAmount, addInvoice, updateInvoice])
 
     // Dynamic Form
     const { renderSingleInput, handleSubmit, setValue, reset, watch, index }
-        = useDynamicForm({ schema, fields, onSubmit, defaultValues })
+        = useDynamicForm({ schema: customValidator(fields), fields, onSubmit, defaultValues })
 
     const items = watch("items");
     const tax = Number(watch("tax") || 0);
@@ -229,29 +223,17 @@ const AddInvoice = () => {
     }, [id, invoice])
 
     useEffect(() => {
-        if (isAddSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/invoices")
-            }, 2000);
+        if (add.isSuccess || update.isSuccess) {
+            const timeout = setTimeout(() => navigate('/invoices'), 2000)
             return () => clearTimeout(timeout)
         }
-    }, [isAddSuccess])
-
-    useEffect(() => {
-        if (isUpdateSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/invoices")
-            }, 2000);
-            return () => clearTimeout(timeout)
-        }
-    }, [isUpdateSuccess])
+    }, [add.isSuccess, update.isSuccess, navigate])
 
     return <>
-        {isAddSuccess && <Toast type="success" message={addData?.message} />}
-        {isAddError && <Toast type="error" message={addError as string} />}
-
-        {isUpdateSuccess && <Toast type={updateData === "No Changes Detected" ? "info" : "success"} message={updateData as string} />}
-        {isUpdateError && <Toast type="error" message={updateError as string} />}
+        {add.isSuccess && <Toast type="success" message={add.data?.message} />}
+        {add.isError && <Toast type="error" message={String(add.error)} />}
+        {update.isSuccess && <Toast type={update.data === 'No Changes Detected' ? 'info' : 'success'} message={update.data} />}
+        {update.isError && <Toast type="error" message={String(update.error)} />}
 
         <Box>
             <DataContainer config={config} />
@@ -339,7 +321,7 @@ const AddInvoice = () => {
                             Reset
                         </Button>
                         <Button
-                            loading={id ? updateLoading : addLoading}
+                            loading={add.isLoading || update.isLoading}
                             type='submit'
                             variant='contained'
                             sx={{ ml: 2, background: "#0777de", color: "white", py: 0.65 }}>
@@ -350,7 +332,7 @@ const AddInvoice = () => {
             </Paper >
         </Box>
     </>
-}
+})
 
 export default AddInvoice
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import Loader from "../../components/Loader";
 import { format } from "date-fns";
@@ -11,7 +11,7 @@ import Toast from "../../components/Toast";
 import { Chip, Paper, Stack } from "@mui/material";
 import { useGetClinicsQuery, useUpdateClinicStatusMutation } from "../../redux/apis/clinic.api";
 
-const Clinics = () => {
+const Clinics = React.memo(() => {
 
     // Hooks
     const [clinics, setClinics] = useState<IClinic[]>([])
@@ -20,13 +20,13 @@ const Clinics = () => {
 
     const debouncedSearchQuery = useDebounce(searchQuery, 500)
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: "Clinics",
         showAddBtn: true,
         showRefreshButton: true,
         showSearchBar: true,
         onSearch: setSearchQuery,
-    }
+    }), [setSearchQuery])
 
     // Queries and Mutations
     const { data, isLoading, isSuccess } = useGetClinicsQuery({
@@ -36,7 +36,7 @@ const Clinics = () => {
     })
     const [updateStatus, { data: statusMessage, error: statusError, isSuccess: statusUpdateSuccess, isError: statusUpdateError }] = useUpdateClinicStatusMutation()
 
-    const columns: GridColDef[] = [
+    const columns: GridColDef[] = useMemo(() => [
         { field: 'serialNo', headerName: 'Sr. No.', minWidth: 70, flex: 0.4 },
         { field: 'name', headerName: 'Name', minWidth: 200, flex: 1 },
         { field: 'contactInfo', headerName: 'Phone Number', minWidth: 170, flex: 1 },
@@ -79,7 +79,7 @@ const Clinics = () => {
                 </>
             }
         }
-    ];
+    ], [updateStatus])
 
     const fetchData = async () => {
         const offlineData = await idbHelpers.getAll({ storeName: "clinics" });
@@ -98,13 +98,17 @@ const Clinics = () => {
         fetchData();
     }, [isSuccess, data]);
 
+    const handlePaginationChange = useCallback((params: { page: number, pageSize: number }) => {
+        setPagination({ page: params.page, pageSize: params.pageSize });
+    }, [])
+
     if (isLoading) {
         return <Loader />
     }
 
     return <>
         {statusUpdateSuccess && <Toast type="success" message={statusMessage} />}
-        {statusUpdateError && <Toast type="error" message={statusError as string} />}
+        {statusUpdateError && <Toast type="error" message={String(statusError)} />}
 
         <DataContainer config={config} />
         <Paper sx={{ width: '100%', mt: 2 }}>
@@ -117,13 +121,11 @@ const Clinics = () => {
                 pageSizeOptions={[5, 10, 20, 50]}
                 paginationModel={{ page: pagination.page, pageSize: pagination.pageSize }}
                 getRowId={(row) => row._id}
-                onPaginationModelChange={(params) => {
-                    setPagination({ page: params.page, pageSize: params.pageSize })
-                }}
+                onPaginationModelChange={handlePaginationChange}
                 sx={{ border: 0 }}
             />
         </Paper >
     </>
-}
+})
 
 export default Clinics

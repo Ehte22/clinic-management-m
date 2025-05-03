@@ -1,7 +1,8 @@
 import { Container, Typography, Button, Box } from "@mui/material";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 
-const PageNotFound = () => {
+const PageNotFound = React.memo(() => {
     const navigate = useNavigate();
 
     return (
@@ -26,6 +27,6 @@ const PageNotFound = () => {
             </Box>
         </Container>
     );
-};
+})
 
 export default PageNotFound;

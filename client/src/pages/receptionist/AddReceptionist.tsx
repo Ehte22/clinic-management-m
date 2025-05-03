@@ -1,7 +1,7 @@
 import useDynamicForm, { FieldConfig } from "../../hooks/useDynamicForm"
 import { customValidator } from "../../utils/validator"
 import { useSendOTPMutation, useVerifyOTPMutation } from "../../redux/apis/auth.api"
-import { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "../../utils/toast"
 import { useNavigate, useParams } from "react-router-dom"
 import { z } from "zod"
@@ -15,7 +15,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { IReceptionist } from "../../models/receptionist.interface"
 import { useAddReceptionistMutation, useGetReceptionistByIdQuery, useUpdateReceptionistMutation } from "../../redux/apis/receptionistApi"
 
-const AddReceptionist = () => {
+const AddReceptionist = React.memo(() => {
 
     // hooks
     const navigate = useNavigate()
@@ -28,20 +28,20 @@ const AddReceptionist = () => {
     const [showEmailError, setShowEmailError] = useState<boolean>(false)
 
     // Queries and Mutations
-    const [addReceptionist, { data: addData, isLoading: addLoading, error: addError, isSuccess: isAddSuccess, isError: isAddError }] = useAddReceptionistMutation()
-    const [updateReceptionist, { data: updateData, isLoading: updateLoading, error: updateError, isSuccess: isUpdateSuccess, isError: isUpdateError }] = useUpdateReceptionistMutation()
+    const [addReceptionist, add] = useAddReceptionistMutation()
+    const [updateReceptionist, update] = useUpdateReceptionistMutation()
     const [sendOtp, { data: otpSendMessage, isLoading: isSendOtpLoading, error: otpSendErrorMessage, isSuccess: otpSendSuccess, isError: otpSendError }] = useSendOTPMutation()
     const [verifyOtp, { data: otpVerifyMessage, isLoading: isVerifyOtpLoading, error: otpVerifyErrorMessage, isSuccess: otpVerifySuccess, isError: otpVerifyError }] = useVerifyOTPMutation()
     const { data: receptionistData } = useGetReceptionistByIdQuery(id || "", {
         skip: !id || !navigator.onLine
     })
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: id ? "Edit Receptionist" : "Add Receptionist",
         backLink: "../",
-    }
+    }), [id])
 
-    const fields: FieldConfig[] = [
+    const fields: FieldConfig[] = useMemo(() => [
         {
             name: "firstName",
             placeholder: "First Name",
@@ -79,8 +79,17 @@ const AddReceptionist = () => {
             formArray: [
                 {
                     name: "day",
-                    type: "text",
+                    type: "select",
                     placeholder: "Day",
+                    options: [
+                        { label: "Monday", value: "monday" },
+                        { label: "Tuesday", value: "tuesday" },
+                        { label: "Wednesday", value: "wednesday" },
+                        { label: "Thursday", value: "thursday" },
+                        { label: "Friday", value: "friday" },
+                        { label: "Saturday", value: "saturday" },
+                        { label: "Sunday", value: "sunday" },
+                    ],
                     size: { xs: 12, sm: 6, lg: 4 },
                     rules: { required: true }
                 },
@@ -101,7 +110,7 @@ const AddReceptionist = () => {
             ],
             rules: {}
         }
-    ]
+    ], [])
 
     const defaultValues = {
         firstName: "",
@@ -113,7 +122,6 @@ const AddReceptionist = () => {
             { day: "", startTime: "", endTime: "" }
         ]
     }
-
 
     // Function for send OTP
     const sendOTP = () => {
@@ -135,13 +143,7 @@ const AddReceptionist = () => {
         }
     }
 
-    // Custom Validator
-    const schema = customValidator(fields)
-
-    type FormValues = z.infer<typeof schema>
-
-    // Submit Function
-    const onSubmit = (values: FormValues) => {
+    const onSubmit = useCallback((values: z.infer<ReturnType<typeof customValidator>>) => {
 
         const formData = new FormData()
 
@@ -186,11 +188,10 @@ const AddReceptionist = () => {
                 setShowEmailError(true)
             }
         }
-    }
+    }, [receptionist, updateReceptionist, addReceptionist, otpVerifySuccess, setShowEmailError, setPreviewImages])
 
-    // Dynamic Form Component
     const { renderSingleInput, handleSubmit, getValues, errors, setValue, reset, disableField } =
-        useDynamicForm({ schema, fields, onSubmit, defaultValues })
+        useDynamicForm({ schema: customValidator(fields), fields, onSubmit, defaultValues })
 
     useEffect(() => {
         if (id) {
@@ -231,22 +232,11 @@ const AddReceptionist = () => {
     }, [otpVerifySuccess])
 
     useEffect(() => {
-        if (isAddSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/receptionists")
-            }, 2000);
+        if (add.isSuccess || update.isSuccess) {
+            const timeout = setTimeout(() => navigate('/receptionists'), 2000)
             return () => clearTimeout(timeout)
         }
-    }, [isAddSuccess])
-
-    useEffect(() => {
-        if (isUpdateSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/receptionists")
-            }, 2000);
-            return () => clearTimeout(timeout)
-        }
-    }, [isUpdateSuccess])
+    }, [add.isSuccess, update.isSuccess, navigate])
 
     useEffect(() => {
         if (showEmailError) {
@@ -256,17 +246,16 @@ const AddReceptionist = () => {
     }, [showEmailError])
 
     return <>
-        {isAddSuccess && <Toast type="success" message={addData?.message} />}
-        {isAddError && <Toast type="error" message={addError as string} />}
-
-        {isUpdateSuccess && <Toast type={updateData === "No Changes Detected" ? "info" : "success"} message={updateData as string} />}
-        {isUpdateError && <Toast type="error" message={updateError as string} />}
+        {add.isSuccess && <Toast type="success" message={add.data?.message} />}
+        {add.isError && <Toast type="error" message={String(add.error)} />}
+        {update.isSuccess && <Toast type={update.data === 'No Changes Detected' ? 'info' : 'success'} message={update.data} />}
+        {update.isError && <Toast type="error" message={String(update.error)} />}
 
         {otpSendSuccess && <Toast type="success" message={otpSendMessage} />}
-        {otpSendError && <Toast type="error" message={otpSendErrorMessage as string} />}
+        {otpSendError && <Toast type="error" message={String(otpSendErrorMessage)} />}
 
-        {otpVerifySuccess && <Toast type="success" message={otpVerifyMessage as string} />}
-        {otpVerifyError && <Toast type="error" message={otpVerifyErrorMessage as string} />}
+        {otpVerifySuccess && <Toast type="success" message={otpVerifyMessage} />}
+        {otpVerifyError && <Toast type="error" message={String(otpVerifyErrorMessage)} />}
 
         {showEmailError && <Toast type="error" message={"Please verify your email address"} />}
 
@@ -358,7 +347,7 @@ const AddReceptionist = () => {
                             Reset
                         </Button>
                         <Button
-                            loading={id ? updateLoading : addLoading}
+                            loading={add.isLoading || update.isLoading}
                             type='submit'
                             variant='contained'
                             sx={{ ml: 2, background: "#0777de", color: "white", py: 0.65 }}>
@@ -370,7 +359,7 @@ const AddReceptionist = () => {
         </Box>
     </>
 
-}
+})
 
 
 export default AddReceptionist

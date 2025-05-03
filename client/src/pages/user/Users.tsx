@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useGetUsersQuery, useUpdateUserStatusMutation } from "../../redux/apis/user.api";
 import Loader from "../../components/Loader";
 import { idbHelpers } from "../../indexDB";
@@ -10,7 +10,7 @@ import ActionsMenu from "../../components/ActionsMenu";
 import DataContainer, { DataContainerConfig } from "../../components/DataContainer";
 import Toast from "../../components/Toast";
 
-const Users = () => {
+const Users = React.memo(() => {
     // States
     const [users, setUsers] = useState<IUser[]>([])
     const [pagination, setPagination] = useState<{ page: number, pageSize: number }>({ page: 0, pageSize: 10 })
@@ -19,7 +19,7 @@ const Users = () => {
 
     const debouncedSearchQuery = useDebounce(searchQuery, 500)
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: "Users",
         showAddBtn: true,
         showRefreshButton: true,
@@ -27,7 +27,7 @@ const Users = () => {
         showSelector: true,
         onSearch: setSearchQuery,
         onSelect: setSelectedClinic
-    }
+    }), [setSearchQuery, setSelectedClinic])
 
     // Queries and Mutations
     const { data, isLoading, isSuccess } = useGetUsersQuery({
@@ -38,7 +38,7 @@ const Users = () => {
     })
     const [updateStatus, { data: statusMessage, error: statusError, isSuccess: statusUpdateSuccess, isError: statusUpdateError }] = useUpdateUserStatusMutation()
 
-    const columns: GridColDef[] = [
+    const columns: GridColDef[] = useMemo(() => [
         { field: 'serialNo', headerName: 'Sr. No.', minWidth: 70, flex: 0.4 },
         {
             field: 'name', headerName: 'Name', minWidth: 200, flex: 1,
@@ -77,7 +77,7 @@ const Users = () => {
                 </>
             }
         }
-    ];
+    ], [updateStatus])
 
 
     const fetchData = async () => {
@@ -97,6 +97,9 @@ const Users = () => {
         fetchData();
     }, [isSuccess, data, selectedClinic]);
 
+    const handlePaginationChange = useCallback((params: { page: number, pageSize: number }) => {
+        setPagination({ page: params.page, pageSize: params.pageSize });
+    }, [])
 
     if (isLoading) {
         return <Loader />
@@ -104,7 +107,7 @@ const Users = () => {
 
     return <>
         {statusUpdateSuccess && <Toast type="success" message={statusMessage} />}
-        {statusUpdateError && <Toast type="error" message={statusError as string} />}
+        {statusUpdateError && <Toast type="error" message={String(statusError)} />}
 
         <DataContainer config={config} />
         <Paper sx={{ width: '100%', mt: 2 }}>
@@ -117,13 +120,11 @@ const Users = () => {
                 pageSizeOptions={[5, 10, 20, 50]}
                 paginationModel={{ page: pagination.page, pageSize: pagination.pageSize }}
                 getRowId={(row) => row._id}
-                onPaginationModelChange={(params) => {
-                    setPagination({ page: params.page, pageSize: params.pageSize })
-                }}
+                onPaginationModelChange={handlePaginationChange}
                 sx={{ border: 0 }}
             />
         </Paper >
     </>
-}
+})
 
 export default Users

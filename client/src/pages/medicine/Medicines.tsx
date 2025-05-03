@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import Loader from "../../components/Loader";
 import { format } from "date-fns";
@@ -11,7 +11,7 @@ import { Paper } from "@mui/material";
 import { IMedicine } from "../../models/medicine.interface";
 import { useDeleteMedicineMutation, useGetMedicinesQuery } from "../../redux/apis/medicineApi";
 
-const Medicines = () => {
+const Medicines = React.memo(() => {
 
   // Hooks
   const [medicines, setMedicines] = useState<IMedicine[]>([])
@@ -21,7 +21,7 @@ const Medicines = () => {
 
   const debouncedSearchQuery = useDebounce(searchQuery, 500)
 
-  const config: DataContainerConfig = {
+  const config: DataContainerConfig = useMemo(() => ({
     pageTitle: "Medicines",
     showAddBtn: true,
     showRefreshButton: true,
@@ -29,7 +29,7 @@ const Medicines = () => {
     showSelector: true,
     onSearch: setSearchQuery,
     onSelect: setSelectedClinic
-  }
+  }), [setSearchQuery, setSelectedClinic])
 
   // Queries and Mutations
   const { data, isLoading, isSuccess } = useGetMedicinesQuery({
@@ -40,7 +40,7 @@ const Medicines = () => {
   })
   const [deleteMedicine, { data: message, isSuccess: isDeleteSuccess }] = useDeleteMedicineMutation()
 
-  const columns: GridColDef[] = [
+  const columns: GridColDef[] = useMemo(() => [
     { field: 'serialNo', headerName: 'Sr. No.', minWidth: 70, flex: 0.4 },
     { field: 'medicineName', headerName: 'Name', minWidth: 170, flex: 1 },
     { field: 'category', headerName: 'Category', minWidth: 170, flex: 1 },
@@ -67,7 +67,7 @@ const Medicines = () => {
         </>
       }
     }
-  ];
+  ], [deleteMedicine])
 
   const fetchData = async () => {
     const offlineData = await idbHelpers.getAll({ storeName: "medicines" });
@@ -84,14 +84,18 @@ const Medicines = () => {
 
   useEffect(() => {
     fetchData();
-  }, [isSuccess, data]);
+  }, [isSuccess, data, selectedClinic]);
+
+  const handlePaginationChange = useCallback((params: { page: number, pageSize: number }) => {
+    setPagination({ page: params.page, pageSize: params.pageSize });
+  }, [])
 
   if (isLoading) {
     return <Loader />
   }
 
   return <>
-    {isDeleteSuccess && <Toast type='success' message={message as string} />}
+    {isDeleteSuccess && <Toast type='success' message={message} />}
     <DataContainer config={config} />
     <Paper sx={{ width: '100%', mt: 2 }}>
       <DataGrid
@@ -103,13 +107,11 @@ const Medicines = () => {
         pageSizeOptions={[5, 10, 20, 50]}
         paginationModel={{ page: pagination.page, pageSize: pagination.pageSize }}
         getRowId={(row) => row._id}
-        onPaginationModelChange={(params) => {
-          setPagination({ page: params.page, pageSize: params.pageSize })
-        }}
+        onPaginationModelChange={handlePaginationChange}
         sx={{ border: 0 }}
       />
     </Paper >
   </>
-}
+})
 
 export default Medicines

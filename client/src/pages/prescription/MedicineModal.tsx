@@ -93,7 +93,6 @@ const MedicineModal: React.FC<IMedicineModalProps> = ({
 
     const categories = [...new Set(allMedicines.map(item => item.category))];
 
-    // Check if a medicine is selected
     const isMedicineSelected = (medicine: IMedicine) => {
         return selectedMedicines[medicine.category]?.includes(medicine.medicineName) || false;
     };

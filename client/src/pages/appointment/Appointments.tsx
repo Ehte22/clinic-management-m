@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import Loader from "../../components/Loader";
 import { idbHelpers } from "../../indexDB";
@@ -11,7 +11,7 @@ import { IAppointment } from "../../models/appointment.interface";
 import { useDeleteAppointmentMutation, useGetAppointmentsQuery } from "../../redux/apis/appointment.api";
 import { format } from "date-fns";
 
-const Appointments = () => {
+const Appointments = React.memo(() => {
 
     // Hooks
     const [appointments, setAppointments] = useState<IAppointment[]>([])
@@ -19,9 +19,7 @@ const Appointments = () => {
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [selectedClinic, setSelectedClinic] = useState<string>("");
 
-    const debouncedSearchQuery = useDebounce(searchQuery, 500)
-
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: "Appointments",
         showAddBtn: true,
         showRefreshButton: true,
@@ -29,7 +27,9 @@ const Appointments = () => {
         showSelector: true,
         onSearch: setSearchQuery,
         onSelect: setSelectedClinic
-    }
+    }), [setSearchQuery, setSelectedClinic])
+
+    const debouncedSearchQuery = useDebounce(searchQuery, 500)
 
     // Queries and Mutations
     const { data, isLoading, isSuccess } = useGetAppointmentsQuery({
@@ -41,7 +41,7 @@ const Appointments = () => {
     })
     const [deleteAppointment, { data: message, isSuccess: isDeleteSuccess }] = useDeleteAppointmentMutation()
 
-    const columns: GridColDef[] = [
+    const columns: GridColDef[] = useMemo(() => [
         { field: 'serialNo', headerName: 'Sr. No.', minWidth: 70, flex: 0.4 },
         {
             field: 'name', headerName: 'Patient Name', minWidth: 170, flex: 1,
@@ -96,7 +96,7 @@ const Appointments = () => {
                 </>
             }
         }
-    ];
+    ], [deleteAppointment])
 
     const fetchData = async () => {
         const offlineData = await idbHelpers.getAll({ storeName: "appointments" });
@@ -113,14 +113,18 @@ const Appointments = () => {
 
     useEffect(() => {
         fetchData();
-    }, [isSuccess, data]);
+    }, [isSuccess, data, selectedClinic]);
+
+    const handlePaginationChange = useCallback((params: { page: number, pageSize: number }) => {
+        setPagination({ page: params.page, pageSize: params.pageSize });
+    }, [])
 
     if (isLoading) {
         return <Loader />
     }
 
     return <>
-        {isDeleteSuccess && <Toast type='success' message={message as string} />}
+        {isDeleteSuccess && <Toast type='success' message={String(message)} />}
         <DataContainer config={config} />
         <Paper sx={{ width: '100%', mt: 2 }}>
             <DataGrid
@@ -132,13 +136,11 @@ const Appointments = () => {
                 pageSizeOptions={[5, 10, 20, 50]}
                 paginationModel={{ page: pagination.page, pageSize: pagination.pageSize }}
                 getRowId={(row) => row._id}
-                onPaginationModelChange={(params) => {
-                    setPagination({ page: params.page, pageSize: params.pageSize })
-                }}
+                onPaginationModelChange={handlePaginationChange}
                 sx={{ border: 0 }}
             />
         </Paper >
     </>
-}
+})
 
 export default Appointments

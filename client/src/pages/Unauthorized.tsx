@@ -1,8 +1,9 @@
 import { Container, Typography, Button, Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import LockIcon from "@mui/icons-material/Lock";
+import React from "react";
 
-const Unauthorized = () => {
+const Unauthorized = React.memo(() => {
     const navigate = useNavigate();
 
     return (
@@ -26,6 +27,6 @@ const Unauthorized = () => {
             </Box>
         </Container>
     );
-};
+})
 
 export default Unauthorized;

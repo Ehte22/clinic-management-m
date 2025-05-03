@@ -1,14 +1,11 @@
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import Loader from "../components/Loader"
 import { IClinicRevenue, IIncome, IMonthlyTrends, useGetDashBoardDataQuery } from "../redux/apis/dashboard.api"
-import { Chart as ChartJS, LineController, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler } from "chart.js";
-
 import { Bar, Line, Pie } from "react-chartjs-2"
 import { Box, Card, CardContent, Grid2, Typography } from "@mui/material";
+import "chart.js/auto"
 
-ChartJS.register(LineController, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler);
-
-const DashBoard = () => {
+const DashBoard = React.memo(() => {
 
     const { data, isLoading } = useGetDashBoardDataQuery({})
     const [clinicData, setClinicData] = useState<{ total: number, active: number, inactive: number }>()
@@ -232,6 +229,6 @@ const DashBoard = () => {
 
         </Box>
     </>
-}
+})
 
 export default DashBoard

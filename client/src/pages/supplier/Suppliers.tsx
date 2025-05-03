@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import Loader from "../../components/Loader";
 import { idbHelpers } from "../../indexDB";
@@ -10,7 +10,7 @@ import { Paper } from "@mui/material";
 import { ISupplier } from "../../models/supplier.interface";
 import { useDeleteSupplierMutation, useGetSuppliersQuery } from "../../redux/apis/supplier.api";
 
-const Suppliers = () => {
+const Suppliers = React.memo(() => {
 
     // Hooks
     const [suppliers, setSuppliers] = useState<ISupplier[]>([])
@@ -20,7 +20,7 @@ const Suppliers = () => {
 
     const debouncedSearchQuery = useDebounce(searchQuery, 500)
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: "Suppliers",
         showAddBtn: true,
         showRefreshButton: true,
@@ -28,7 +28,7 @@ const Suppliers = () => {
         showSelector: true,
         onSearch: setSearchQuery,
         onSelect: setSelectedClinic
-    }
+    }), [setSearchQuery, setSelectedClinic])
 
     // Queries and Mutations
     const { data, isLoading, isSuccess } = useGetSuppliersQuery({
@@ -39,7 +39,7 @@ const Suppliers = () => {
     })
     const [deleteSuppliers, { data: message, isSuccess: isDeleteSuccess }] = useDeleteSupplierMutation()
 
-    const columns: GridColDef[] = [
+    const columns: GridColDef[] = useMemo(() => [
         { field: 'serialNo', headerName: 'Sr. No.', minWidth: 70, flex: 0.4 },
         { field: 'name', headerName: 'Name', minWidth: 170, flex: 1 },
         { field: 'phone', headerName: 'Phone', minWidth: 170, flex: 1 },
@@ -65,7 +65,7 @@ const Suppliers = () => {
                 </>
             }
         }
-    ];
+    ], [deleteSuppliers])
 
     const fetchData = async () => {
         const offlineData = await idbHelpers.getAll({ storeName: "suppliers" });
@@ -84,12 +84,16 @@ const Suppliers = () => {
         fetchData();
     }, [isSuccess, data]);
 
+    const handlePaginationChange = useCallback((params: { page: number, pageSize: number }) => {
+        setPagination({ page: params.page, pageSize: params.pageSize });
+    }, [])
+
     if (isLoading) {
         return <Loader />
     }
 
     return <>
-        {isDeleteSuccess && <Toast type='success' message={message as string} />}
+        {isDeleteSuccess && <Toast type='success' message={String(message)} />}
         <DataContainer config={config} />
         <Paper sx={{ width: '100%', mt: 2 }}>
             <DataGrid
@@ -101,13 +105,11 @@ const Suppliers = () => {
                 pageSizeOptions={[5, 10, 20, 50]}
                 paginationModel={{ page: pagination.page, pageSize: pagination.pageSize }}
                 getRowId={(row) => row._id}
-                onPaginationModelChange={(params) => {
-                    setPagination({ page: params.page, pageSize: params.pageSize })
-                }}
+                onPaginationModelChange={handlePaginationChange}
                 sx={{ border: 0 }}
             />
         </Paper >
     </>
-}
+})
 
 export default Suppliers

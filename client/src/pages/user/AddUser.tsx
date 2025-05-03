@@ -1,7 +1,7 @@
 import useDynamicForm, { FieldConfig } from "../../hooks/useDynamicForm"
 import { customValidator } from "../../utils/validator"
 import { useSendOTPMutation, useVerifyOTPMutation } from "../../redux/apis/auth.api"
-import { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "../../utils/toast"
 import { useGetClinicsQuery } from "../../redux/apis/clinic.api"
 import { useNavigate, useParams } from "react-router-dom"
@@ -16,69 +16,57 @@ import { Box, Button, Divider, Grid2, Paper, TextField } from "@mui/material"
 import { textFieldStyles } from "../../components/Inputs"
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
-const fields: FieldConfig[] = [
-    {
-        name: "firstName",
-        placeholder: "First Name",
-        type: "text",
-        rules: { required: true, min: 2, max: 50 }
-    },
-    {
-        name: "lastName",
-        placeholder: "Last Name",
-        type: "text",
-        rules: { required: true, min: 2, max: 50 }
-    },
-    {
-        name: "email",
-        placeholder: "Email Address",
-        type: "text",
-        rules: { required: true, email: true }
-    },
-    {
-        name: "phone",
-        placeholder: "Phone Number",
-        type: "text",
-        rules: { required: true, pattern: /^[6-9]\d{9}$/ }
-    },
-    {
-        name: "profile",
-        placeholder: "Profile",
-        type: "file",
-        rules: { required: false, file: true, maxSize: 10 }
-    },
-
-    {
-        name: "role",
-        placeholder: "Role",
-        type: "select",
-        options: [
-            { label: "Clinic Admin", value: "Clinic Admin" },
-            { label: "Doctor", value: "Doctor" },
-            { label: "Receptionist", value: "Receptionist" }
-        ],
-        rules: { required: true }
-    },
-
-
-]
-
-const defaultValues = {
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    role: "",
-    profile: "",
-    clinicId: ""
-}
-
-const AddUser = () => {
+const AddUser = React.memo(() => {
 
     // hooks
     const navigate = useNavigate()
     const { id } = useParams()
     const { setPreviewImages } = useImagePreview()
+
+
+    const fields: FieldConfig[] = useMemo(() => [
+        {
+            name: "firstName",
+            placeholder: "First Name",
+            type: "text",
+            rules: { required: true, min: 2, max: 50 }
+        },
+        {
+            name: "lastName",
+            placeholder: "Last Name",
+            type: "text",
+            rules: { required: true, min: 2, max: 50 }
+        },
+        {
+            name: "email",
+            placeholder: "Email Address",
+            type: "text",
+            rules: { required: true, email: true }
+        },
+        {
+            name: "phone",
+            placeholder: "Phone Number",
+            type: "text",
+            rules: { required: true, pattern: /^[6-9]\d{9}$/ }
+        },
+        {
+            name: "profile",
+            placeholder: "Profile",
+            type: "file",
+            rules: { required: false, file: true, maxSize: 10 }
+        },
+        {
+            name: "role",
+            placeholder: "Role",
+            type: "select",
+            options: [
+                { label: "Clinic Admin", value: "Clinic Admin" },
+                { label: "Doctor", value: "Doctor" },
+                { label: "Receptionist", value: "Receptionist" }
+            ],
+            rules: { required: true }
+        },
+    ], [])
 
     // States
     const [OTP, setOTP] = useState("")
@@ -87,8 +75,8 @@ const AddUser = () => {
     const [showEmailError, setShowEmailError] = useState<boolean>(false)
 
     // Queries and Mutations
-    const [createUser, { data: addData, isLoading: addLoading, error: addError, isSuccess: isAddSuccess, isError: isAddError }] = useAddUserMutation()
-    const [updateUser, { data: updateData, isLoading: updateLoading, error: updateError, isSuccess: isUpdateSuccess, isError: isUpdateError }] = useUpdateUserMutation()
+    const [createUser, add] = useAddUserMutation()
+    const [updateUser, update] = useUpdateUserMutation()
     const [sendOtp, { data: otpSendMessage, isLoading: isSendOtpLoading, error: otpSendErrorMessage, isSuccess: otpSendSuccess, isError: otpSendError }] = useSendOTPMutation()
     const [verifyOtp, { data: otpVerifyMessage, isLoading: isVerifyOtpLoading, error: otpVerifyErrorMessage, isSuccess: otpVerifySuccess, isError: otpVerifyError }] = useVerifyOTPMutation()
     const { data: clinicData, isSuccess: getClinicsSuccess } = useGetClinicsQuery({ isFetchAll: true })
@@ -96,9 +84,19 @@ const AddUser = () => {
         skip: !id || !navigator.onLine
     })
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: id ? "Edit User" : "Add User",
         backLink: "../",
+    }), [id])
+
+    const defaultValues = {
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        role: "",
+        profile: "",
+        clinicId: ""
     }
 
     // Function for send OTP
@@ -121,13 +119,7 @@ const AddUser = () => {
         }
     }
 
-    // Custom Validator
-    const schema = customValidator(updatedFields)
-
-    type FormValues = z.infer<typeof schema>
-
-    // Submit Function
-    const onSubmit = (data: FormValues) => {
+    const onSubmit = useCallback((data: z.infer<ReturnType<typeof customValidator>>) => {
         const clinic = clinicData?.result?.find(item => item.name === data.clinicId)
 
         let updatedData = data
@@ -172,11 +164,11 @@ const AddUser = () => {
                 setShowEmailError(true)
             }
         }
-    }
+    }, [user, updateUser, createUser, otpVerifySuccess, clinicData, setShowEmailError, setPreviewImages])
 
     // Dynamic Form Component
     const { renderSingleInput, handleSubmit, getValues, errors, setValue, reset, disableField } =
-        useDynamicForm({ schema, fields: updatedFields, onSubmit, defaultValues })
+        useDynamicForm({ schema: customValidator(updatedFields), fields: updatedFields, onSubmit, defaultValues })
 
     useEffect(() => {
         if (id) {
@@ -246,42 +238,30 @@ const AddUser = () => {
     }, [otpVerifySuccess])
 
     useEffect(() => {
-        if (isAddSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/users")
-            }, 2000);
-            return () => clearTimeout(timeout)
-        }
-    }, [isAddSuccess])
-
-    useEffect(() => {
-        if (isUpdateSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/users")
-            }, 2000);
-            return () => clearTimeout(timeout)
-        }
-    }, [isUpdateSuccess])
-
-    useEffect(() => {
         if (showEmailError) {
             const timer = setTimeout(() => setShowEmailError(false), 2000)
             return () => clearTimeout(timer)
         }
     }, [showEmailError])
 
-    return <>
-        {isAddSuccess && <Toast type="success" message={addData?.message} />}
-        {isAddError && <Toast type="error" message={addError as string} />}
+    useEffect(() => {
+        if (add.isSuccess || update.isSuccess) {
+            const timeout = setTimeout(() => navigate('/users'), 2000)
+            return () => clearTimeout(timeout)
+        }
+    }, [add.isSuccess, update.isSuccess, navigate])
 
-        {isUpdateSuccess && <Toast type={updateData === "No Changes Detected" ? "info" : "success"} message={updateData as string} />}
-        {isUpdateError && <Toast type="error" message={updateError as string} />}
+    return <>
+        {add.isSuccess && <Toast type="success" message={add.data?.message} />}
+        {add.isError && <Toast type="error" message={String(add.error)} />}
+        {update.isSuccess && <Toast type={update.data === 'No Changes Detected' ? 'info' : 'success'} message={update.data} />}
+        {update.isError && <Toast type="error" message={String(update.error)} />}
 
         {otpSendSuccess && <Toast type="success" message={otpSendMessage} />}
-        {otpSendError && <Toast type="error" message={otpSendErrorMessage as string} />}
+        {otpSendError && <Toast type="error" message={String(otpSendErrorMessage)} />}
 
-        {otpVerifySuccess && <Toast type="success" message={otpVerifyMessage as string} />}
-        {otpVerifyError && <Toast type="error" message={otpVerifyErrorMessage as string} />}
+        {otpVerifySuccess && <Toast type="success" message={otpVerifyMessage} />}
+        {otpVerifyError && <Toast type="error" message={String(otpVerifyErrorMessage)} />}
 
         {showEmailError && <Toast type="error" message={"Please verify your email address"} />}
 
@@ -379,7 +359,7 @@ const AddUser = () => {
                             Reset
                         </Button>
                         <Button
-                            loading={id ? updateLoading : addLoading}
+                            loading={add.isLoading || update.isLoading}
                             type='submit'
                             variant='contained'
                             sx={{ ml: 2, background: "#0777de", color: "white", py: 0.65 }}>
@@ -391,7 +371,7 @@ const AddUser = () => {
         </Box>
     </>
 
-}
+})
 
 
 export default AddUser

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import Loader from "../../components/Loader";
 import { idbHelpers } from "../../indexDB";
@@ -12,7 +12,7 @@ import { doctorApi, useGetDoctorsQuery } from "../../redux/apis/doctor.api";
 import { useUpdateUserStatusMutation } from "../../redux/apis/user.api";
 import { useDispatch } from "react-redux";
 
-const Doctors = () => {
+const Doctors = React.memo(() => {
 
     // Hooks
     const [doctors, setDoctors] = useState<IDoctor[]>([])
@@ -23,14 +23,14 @@ const Doctors = () => {
     const debouncedSearchQuery = useDebounce(searchQuery, 500)
     const dispatch = useDispatch()
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: "Doctors",
         showRefreshButton: true,
         showSearchBar: true,
         showSelector: true,
         onSearch: setSearchQuery,
         onSelect: setSelectedClinic
-    }
+    }), [setSearchQuery, setSelectedClinic])
 
     // Queries and Mutations
     const { data, isLoading, isSuccess } = useGetDoctorsQuery({
@@ -41,7 +41,7 @@ const Doctors = () => {
     })
     const [updateStatus, { data: statusMessage, error: statusError, isSuccess: statusUpdateSuccess, isError: statusUpdateError }] = useUpdateUserStatusMutation()
 
-    const columns: GridColDef[] = [
+    const columns: GridColDef[] = useMemo(() => [
         { field: 'serialNo', headerName: 'Sr. No.', minWidth: 70, flex: 0.4 },
         {
             field: 'name', headerName: 'Name', minWidth: 200, flex: 1,
@@ -97,7 +97,7 @@ const Doctors = () => {
                 </>
             }
         }
-    ];
+    ], [updateStatus])
 
     const fetchData = async () => {
         const offlineData = await idbHelpers.getAll({ storeName: "doctors" });
@@ -114,7 +114,11 @@ const Doctors = () => {
 
     useEffect(() => {
         fetchData();
-    }, [isSuccess, data]);
+    }, [isSuccess, data, selectedClinic]);
+
+    const handlePaginationChange = useCallback((params: { page: number, pageSize: number }) => {
+        setPagination({ page: params.page, pageSize: params.pageSize });
+    }, [])
 
     if (isLoading) {
         return <Loader />
@@ -122,7 +126,7 @@ const Doctors = () => {
 
     return <>
         {statusUpdateSuccess && <Toast type="success" message={statusMessage} />}
-        {statusUpdateError && <Toast type="error" message={statusError as string} />}
+        {statusUpdateError && <Toast type="error" message={String(statusError)} />}
 
         <DataContainer config={config} />
         <Paper sx={{ width: '100%', mt: 2 }}>
@@ -135,13 +139,11 @@ const Doctors = () => {
                 pageSizeOptions={[5, 10, 20, 50]}
                 paginationModel={{ page: pagination.page, pageSize: pagination.pageSize }}
                 getRowId={(row) => row._id}
-                onPaginationModelChange={(params) => {
-                    setPagination({ page: params.page, pageSize: params.pageSize })
-                }}
+                onPaginationModelChange={handlePaginationChange}
                 sx={{ border: 0 }}
             />
         </Paper >
     </>
-}
+})
 
 export default Doctors

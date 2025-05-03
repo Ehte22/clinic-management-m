@@ -23,7 +23,7 @@ const supplierSchema = new Schema<ISupplier>({
         city: { type: String, required: true, trim: true },
         state: { type: String, required: true, trim: true },
         country: { type: String, required: true, trim: true },
-        street: { type: String, required: true, trim: true },
+        street: { type: String, trim: true },
     },
     deletedAt: { type: Date, default: null }
 }, { timestamps: true });

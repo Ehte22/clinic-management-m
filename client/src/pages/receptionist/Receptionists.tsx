@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Loader from "../../components/Loader";
 import { idbHelpers } from "../../indexDB";
 import { useDebounce } from "../../utils/useDebounce";
@@ -12,7 +12,7 @@ import { receptionistApi, useGetReceptionistsQuery } from "../../redux/apis/rece
 import { useUpdateUserStatusMutation } from "../../redux/apis/user.api";
 import { useDispatch } from "react-redux";
 
-const Receptionists = () => {
+const Receptionists = React.memo(() => {
     // States
     const [receptionists, setReceptionists] = useState<IReceptionist[]>([])
     const [pagination, setPagination] = useState<{ page: number, pageSize: number }>({ page: 0, pageSize: 10 })
@@ -22,7 +22,7 @@ const Receptionists = () => {
     const debouncedSearchQuery = useDebounce(searchQuery, 500)
     const dispatch = useDispatch()
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: "Receptionists",
         showAddBtn: true,
         showRefreshButton: true,
@@ -30,7 +30,7 @@ const Receptionists = () => {
         showSelector: true,
         onSearch: setSearchQuery,
         onSelect: setSelectedClinic
-    }
+    }), [setSearchQuery, setSelectedClinic])
 
     // Queries and Mutations
     const { data, isLoading, isSuccess } = useGetReceptionistsQuery({
@@ -41,10 +41,10 @@ const Receptionists = () => {
     })
     const [updateStatus, { data: statusMessage, error: statusError, isSuccess: statusUpdateSuccess, isError: statusUpdateError }] = useUpdateUserStatusMutation()
 
-    const columns: GridColDef[] = [
+    const columns: GridColDef[] = useMemo(() => [
         { field: 'serialNo', headerName: 'Sr. No.', minWidth: 70, flex: 0.4 },
         {
-            field: 'name', headerName: 'Name', minWidth: 200, flex: 1,
+            field: 'name', headerName: 'Name', minWidth: 200, flex: 0.8,
             valueGetter: (_, row) => `${row.user?.firstName} ${row.user?.lastName}`
         },
         {
@@ -52,11 +52,11 @@ const Receptionists = () => {
             valueGetter: (_, row) => row.user?.email
         },
         {
-            field: 'phone', headerName: 'Phone Number', minWidth: 200, flex: 1,
+            field: 'phone', headerName: 'Phone Number', minWidth: 200, flex: 0.7,
             valueGetter: (_, row) => row.user?.phone
         },
         {
-            field: 'status', headerName: 'Status', minWidth: 150, flex: 0.8,
+            field: 'status', headerName: 'Status', minWidth: 120, flex: 0.8,
             renderCell: (params) => {
                 const handleStatusChange = () => {
                     updateStatus({ id: params.row.user._id, status: params.row.user.status === "active" ? "inactive" : "active" }).unwrap()
@@ -91,7 +91,7 @@ const Receptionists = () => {
                 </>
             }
         }
-    ];
+    ], [updateStatus])
 
 
     const fetchData = async () => {
@@ -111,13 +111,17 @@ const Receptionists = () => {
         fetchData();
     }, [isSuccess, data, selectedClinic]);
 
+    const handlePaginationChange = useCallback((params: { page: number, pageSize: number }) => {
+        setPagination({ page: params.page, pageSize: params.pageSize });
+    }, [])
+
     if (isLoading) {
         return <Loader />
     }
 
     return <>
         {statusUpdateSuccess && <Toast type="success" message={statusMessage} />}
-        {statusUpdateError && <Toast type="error" message={statusError as string} />}
+        {statusUpdateError && <Toast type="error" message={String(statusError)} />}
 
         <DataContainer config={config} />
         <Paper sx={{ width: '100%', mt: 2 }}>
@@ -130,13 +134,11 @@ const Receptionists = () => {
                 pageSizeOptions={[5, 10, 20, 50]}
                 paginationModel={{ page: pagination.page, pageSize: pagination.pageSize }}
                 getRowId={(row) => row._id}
-                onPaginationModelChange={(params) => {
-                    setPagination({ page: params.page, pageSize: params.pageSize })
-                }}
+                onPaginationModelChange={handlePaginationChange}
                 sx={{ border: 0 }}
             />
         </Paper >
     </>
-}
+})
 
 export default Receptionists

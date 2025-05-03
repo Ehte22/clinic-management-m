@@ -1,34 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom"
-import { useEffect } from "react"
+import { lazy, useEffect } from "react"
 import './i18n';
-import Clinics from "./pages/clinic/Clinics"
-import AddClinic from "./pages/clinic/AddClinic"
-import Users from "./pages/user/Users"
-import AddUser from "./pages/user/AddUser"
-import Medicines from "./pages/medicine/Medicines"
 import Layout from "./components/Layout"
-import Profile from "./pages/user/Profile"
-import Invoice from "./pages/invoice/Invoices"
-import Receptionist from "./pages/receptionist/Receptionists"
-import AddReceptionist from "./pages/receptionist/AddReceptionist"
-import Doctor from "./pages/doctor/Doctor"
-import Appointment from "./pages/appointment/Appointments"
-import Login from "./pages/Login"
-import AddDoctor from "./pages/doctor/AddDoctor"
-import AddAppointment from "./pages/appointment/AddAppointment"
-import ResetPassword from "./pages/ResetPassword"
-import ForgotPassword from "./pages/ForgotPassword"
-import Prescription from "./pages/prescription/Prescription"
-import Suppliers from "./pages/supplier/Suppliers"
-import AddSupplier from "./pages/supplier/AddSupplier"
-import SessionExpiredModal from "./components/SessionExpiredModal"
-import AddMedicine from "./pages/medicine/AddMedicine"
-import Protected from "./components/Protected"
-import ErrorBoundary from "./components/ErrorBoundary"
-import PageNotFound from "./pages/PageNotFound";
-import Unauthorized from "./pages/Unauthorized";
-import DashBoard from "./pages/DashBoard";
-import UserDashBoard from "./pages/UserDashboard";
 import { useDispatch } from "react-redux"
 import { idbHelpers } from "./indexDB"
 import { supplierApi } from "./redux/apis/supplier.api"
@@ -43,9 +16,37 @@ import { receptionistApi } from "./redux/apis/receptionistApi"
 import { userApi } from "./redux/apis/user.api"
 import { ImageContextProvider } from "./context/ImageContext";
 import { createTheme, ThemeProvider } from "@mui/material";
-import AddInvoice from "./pages/invoice/AddInvoice";
-import Patients from "./pages/patient/Patients";
-import AddPatient from "./pages/patient/AddPatient";
+import SessionExpiredModal from "./components/SessionExpiredModal";
+import Protected from "./components/Protected";
+import ErrorBoundary from "./components/ErrorBoundary";
+
+const Clinics = lazy(() => import("./pages/clinic/Clinics"))
+const AddClinic = lazy(() => import("./pages/clinic/AddClinic"))
+const Users = lazy(() => import("./pages/user/Users"))
+const AddUser = lazy(() => import("./pages/user/AddUser"))
+const Medicines = lazy(() => import("./pages/medicine/Medicines"))
+const Profile = lazy(() => import("./pages/user/Profile"))
+const Invoice = lazy(() => import("./pages/invoice/Invoices"))
+const Receptionist = lazy(() => import("./pages/receptionist/Receptionists"))
+const AddReceptionist = lazy(() => import("./pages/receptionist/AddReceptionist"))
+const Doctor = lazy(() => import("./pages/doctor/Doctor"))
+const Appointment = lazy(() => import("./pages/appointment/Appointments"))
+const Login = lazy(() => import("./pages/Login"))
+const AddDoctor = lazy(() => import("./pages/doctor/AddDoctor"))
+const AddAppointment = lazy(() => import("./pages/appointment/AddAppointment"))
+const ResetPassword = lazy(() => import("./pages/ResetPassword"))
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"))
+const Prescription = lazy(() => import("./pages/prescription/Prescription"))
+const Suppliers = lazy(() => import("./pages/supplier/Suppliers"))
+const AddSupplier = lazy(() => import("./pages/supplier/AddSupplier"))
+const AddMedicine = lazy(() => import("./pages/medicine/AddMedicine"))
+const PageNotFound = lazy(() => import("./pages/PageNotFound"))
+const Unauthorized = lazy(() => import("./pages/Unauthorized"))
+const DashBoard = lazy(() => import("./pages/DashBoard"))
+const UserDashBoard = lazy(() => import("./pages/UserDashboard"))
+const AddInvoice = lazy(() => import("./pages/invoice/AddInvoice"))
+const Patients = lazy(() => import("./pages/patient/Patients"))
+const AddPatient = lazy(() => import("./pages/patient/AddPatient"))
 
 const theme = createTheme({
   palette: {
@@ -53,16 +54,6 @@ const theme = createTheme({
     primary: { main: "#FFFFFF", contrastText: "#000000" },
     secondary: { main: "#0772ed" },
   },
-  // components: {
-  //   MuiTypography: {
-  //     styleOverrides: {
-  //       root: ({ theme }) => ({
-  //         color:
-  //           theme.palette.mode === "dark" ? "#ffffff" : "#000000",
-  //       }),
-  //     },
-  //   },
-  // },
   breakpoints: { values: { xs: 0, sm: 600, md: 1000, lg: 1200, xl: 1536 } },
 })
 

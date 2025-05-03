@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import useDynamicForm, { FieldConfig } from "../../hooks/useDynamicForm"
 import { customValidator } from "../../utils/validator"
 import { useNavigate, useParams } from "react-router-dom"
@@ -11,104 +11,7 @@ import DataContainer, { DataContainerConfig } from "../../components/DataContain
 import Toast from "../../components/Toast"
 import { useAddClinicMutation, useGetClinicByIdQuery, useUpdateClinicMutation } from "../../redux/apis/clinic.api"
 
-const fields: FieldConfig[] = [
-    {
-        name: "name",
-        placeholder: "Clinic Name",
-        type: "text",
-        rules: { required: true, min: 2, max: 50 }
-    },
-    {
-        name: "contactInfo",
-        placeholder: "Phone Number",
-        type: "text",
-        rules: { required: true, pattern: /^[6-9]\d{9}$/ }
-    },
-    {
-        name: "email",
-        placeholder: "Email Address",
-        type: "text",
-        rules: { required: false, email: true }
-    },
-    {
-        name: "startDate",
-        placeholder: "Start Date",
-        type: "date",
-        rules: { required: true }
-    },
-    {
-        name: "endDate",
-        placeholder: "End Date",
-        type: "date",
-        rules: { required: true }
-    },
-    {
-        name: "amount",
-        placeholder: "Amount",
-        type: "text",
-        rules: { required: true, number: true, pattern: /^\d+$/, patternMessage: "Only numbers are allowed" }
-    },
-    {
-        name: "alternateContactInfo",
-        placeholder: "Alternate Phone Number",
-        type: "text",
-        rules: { required: false, pattern: /^[6-9]\d{9}$/ }
-    },
-    {
-        name: "street",
-        placeholder: "Street Address",
-        type: "text",
-        rules: { required: true, min: 2, max: 500 }
-    },
-    {
-        name: "city",
-        placeholder: "City",
-        type: "text",
-        rules: { required: true, min: 2, max: 100 }
-    },
-    {
-        name: "state",
-        placeholder: "State",
-        type: "text",
-        rules: { required: true, min: 2, max: 100 }
-    },
-    {
-        name: "country",
-        placeholder: "Country",
-        type: "select",
-        options: [
-            { label: "India", value: "India" },
-            { label: "United States", value: "United States" },
-            { label: "United Kingdom", value: "United Kingdom" },
-            { label: "Australia", value: "Australia" }
-        ],
-        rules: { required: true, min: 2, max: 100 }
-    },
-    {
-        name: "logo",
-        label: "Logo",
-        placeholder: "Logo",
-        type: "file",
-        rules: { required: false, file: true, maxSize: 10 }
-    },
-]
-
-const defaultValues = {
-    name: "",
-    contactInfo: "",
-    email: "",
-    startDate: "",
-    endDate: "",
-    amount: "",
-    alternateContactInfo: "",
-    city: "",
-    state: "",
-    street: "",
-    country: "India",
-    logo: ""
-}
-
-const AddClinic = () => {
+const AddClinic = React.memo(() => {
     const [clinic, setClinic] = useState<IClinic | null>(null)
 
     // Hooks
@@ -117,55 +20,148 @@ const AddClinic = () => {
     const navigate = useNavigate()
 
     // Queries and Mutations
-    const [createClinic, { data: addData, isLoading: addLoading, error: addError, isSuccess: isAddSuccess, isError: isAddError }] = useAddClinicMutation()
+    const [createClinic, add] = useAddClinicMutation()
     const { data: clinicData, isLoading, isFetching } = useGetClinicByIdQuery(id || "", {
         skip: !id || !navigator.onLine
     })
-    const [updateClinic, { data: updateData, isLoading: updateLoading, error: updateError, isSuccess: isUpdateSuccess, isError: isUpdateError }] = useUpdateClinicMutation()
+    const [updateClinic, update] = useUpdateClinicMutation()
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: id ? "Edit Clinic" : "Add Clinic",
         backLink: "../",
+    }), [id])
+
+    const fields: FieldConfig[] = useMemo(() => [
+        {
+            name: "name",
+            placeholder: "Clinic Name",
+            type: "text",
+            rules: { required: true, min: 2, max: 50 }
+        },
+        {
+            name: "contactInfo",
+            placeholder: "Phone Number",
+            type: "text",
+            rules: { required: true, pattern: /^[6-9]\d{9}$/ }
+        },
+        {
+            name: "email",
+            placeholder: "Email Address",
+            type: "text",
+            rules: { required: false, email: true }
+        },
+        {
+            name: "startDate",
+            placeholder: "Start Date",
+            type: "date",
+            rules: { required: true }
+        },
+        {
+            name: "endDate",
+            placeholder: "End Date",
+            type: "date",
+            rules: { required: true }
+        },
+        {
+            name: "amount",
+            placeholder: "Amount",
+            type: "text",
+            rules: { required: true, number: true, pattern: /^\d+$/, patternMessage: "Only numbers are allowed" }
+        },
+        {
+            name: "alternateContactInfo",
+            placeholder: "Alternate Phone Number",
+            type: "text",
+            rules: { required: false, pattern: /^[6-9]\d{9}$/ }
+        },
+        {
+            name: "street",
+            placeholder: "Street Address",
+            type: "text",
+            rules: { required: true, min: 2, max: 500 }
+        },
+        {
+            name: "city",
+            placeholder: "City",
+            type: "text",
+            rules: { required: true, min: 2, max: 100 }
+        },
+        {
+            name: "state",
+            placeholder: "State",
+            type: "text",
+            rules: { required: true, min: 2, max: 100 }
+        },
+        {
+            name: "country",
+            placeholder: "Country",
+            type: "select",
+            options: [
+                { label: "India", value: "India" },
+                { label: "United States", value: "United States" },
+                { label: "United Kingdom", value: "United Kingdom" },
+                { label: "Australia", value: "Australia" }
+            ],
+            rules: { required: true, min: 2, max: 100 }
+        },
+        {
+            name: "logo",
+            label: "Logo",
+            placeholder: "Logo",
+            type: "file",
+            rules: { required: false, file: true, maxSize: 10 }
+        },
+    ], [])
+
+    const defaultValues = {
+        name: "",
+        contactInfo: "",
+        email: "",
+        startDate: "",
+        endDate: "",
+        amount: "",
+        alternateContactInfo: "",
+        city: "",
+        state: "",
+        street: "",
+        country: "India",
+        logo: ""
     }
-
-    // Custom Validator
-    const schema = customValidator(fields)
-
-    type FormValues = z.infer<typeof schema>
 
     // Submit Function
-    const onSubmit = (data: FormValues) => {
+    const onSubmit = useCallback(
+        (data: z.infer<ReturnType<typeof customValidator>>) => {
 
-        const formData = new FormData()
+            const formData = new FormData()
 
-        Object.keys(data).forEach(key => {
-            if (key === "logo" && typeof data[key] == "object") {
-                Object.keys(data.logo).forEach(item => {
-                    formData.append(key, data.logo[item])
-                })
-            } else {
-                formData.append(key, data[key])
-            }
-        })
+            Object.keys(data).forEach(key => {
+                if (key === "logo" && typeof data[key] == "object") {
+                    Object.keys(data.logo).forEach(item => {
+                        formData.append(key, data.logo[item])
+                    })
+                } else {
+                    formData.append(key, data[key])
+                }
+            })
 
-        if (clinic && clinic._id) {
-            if (navigator.onLine) {
-                updateClinic({ clinicData: formData, id: clinic._id })
+            if (clinic && clinic._id) {
+                if (navigator.onLine) {
+                    updateClinic({ clinicData: formData, id: clinic._id })
+                } else {
+                    idbHelpers.update({ storeName: "clinics", endpoint: "clinic/update-clinic", _id: clinic._id, data, isFormData: true })
+                }
             } else {
-                idbHelpers.update({ storeName: "clinics", endpoint: "clinic/update-clinic", _id: clinic._id, data, isFormData: true })
+                if (navigator.onLine) {
+                    createClinic(formData)
+                } else {
+                    idbHelpers.add({ storeName: "clinics", endpoint: "clinic/create-clinic", data: { ...data, status: "active" }, isFormData: true })
+                }
             }
-        } else {
-            if (navigator.onLine) {
-                createClinic(formData)
-            } else {
-                idbHelpers.add({ storeName: "clinics", endpoint: "clinic/create-clinic", data: { ...data, status: "active" }, isFormData: true })
-            }
-        }
-    }
+        }, [clinic, createClinic, updateClinic])
 
     // Dynamic Form
     const { renderSingleInput, handleSubmit, setValue, reset }
-        = useDynamicForm({ schema, fields, onSubmit, defaultValues })
+        = useDynamicForm({ schema: customValidator(fields), fields, onSubmit, defaultValues })
 
     useEffect(() => {
         if (id) {
@@ -212,29 +208,17 @@ const AddClinic = () => {
     }, [id, clinic])
 
     useEffect(() => {
-        if (isAddSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/clinics")
-            }, 2000);
+        if (add.isSuccess || update.isSuccess) {
+            const timeout = setTimeout(() => navigate('/clinics'), 2000)
             return () => clearTimeout(timeout)
         }
-    }, [isAddSuccess])
-
-    useEffect(() => {
-        if (isUpdateSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/clinics")
-            }, 2000);
-            return () => clearTimeout(timeout)
-        }
-    }, [isUpdateSuccess])
+    }, [add.isSuccess, update.isSuccess, navigate])
 
     return <>
-        {isAddSuccess && <Toast type="success" message={addData?.message} />}
-        {isAddError && <Toast type="error" message={addError as string} />}
-
-        {isUpdateSuccess && <Toast type={updateData === "No Changes Detected" ? "info" : "success"} message={updateData as string} />}
-        {isUpdateError && <Toast type="error" message={updateError as string} />}
+        {add.isSuccess && <Toast type="success" message={add.data?.message} />}
+        {add.isError && <Toast type="error" message={String(add.error)} />}
+        {update.isSuccess && <Toast type={update.data === 'No Changes Detected' ? 'info' : 'success'} message={update.data} />}
+        {update.isError && <Toast type="error" message={String(update.error)} />}
 
         <Box>
             <DataContainer config={config} />
@@ -315,7 +299,7 @@ const AddClinic = () => {
                             Reset
                         </Button>
                         <Button
-                            loading={id ? updateLoading : addLoading}
+                            loading={add.isLoading || update.isLoading}
                             type='submit'
                             variant='contained'
                             sx={{ ml: 2, background: "#0777de", color: "white", py: 0.65 }}>
@@ -326,7 +310,7 @@ const AddClinic = () => {
             </Paper >
         </Box>
     </>
-}
+})
 
 export default AddClinic
 

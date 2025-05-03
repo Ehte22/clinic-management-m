@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import useDynamicForm, { FieldConfig } from "../../hooks/useDynamicForm"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
+import useDynamicForm from "../../hooks/useDynamicForm"
 import { customValidator } from "../../utils/validator"
 import { useNavigate, useParams } from "react-router-dom"
 import { z } from "zod"
@@ -16,30 +16,30 @@ const socket = io(import.meta.env.VITE_BACKEND_URL, {
     transports: ["polling"]
 })
 
-const AddAppointment = () => {
+const AddAppointment = React.memo(() => {
     const [appointment, setAppointment] = useState<IAppointment | null>(null)
-    const [doctorOptions, setDoctorOptions] = useState<{ label: string, value?: string }[]>([])
-    const [patientOptions, setPatientOptions] = useState<{ label: string, value?: string }[]>([])
+    const [doctorOptions, setDoctorOptions] = useState<{ label?: string, value?: string }[]>([])
+    const [patientOptions, setPatientOptions] = useState<{ label?: string, value?: string }[]>([])
 
     // Hooks
     const { id } = useParams()
     const navigate = useNavigate()
 
     // Queries and Mutations
-    const [addAppointment, { data: addData, isLoading: addLoading, error: addError, isSuccess: isAddSuccess, isError: isAddError }] = useAddAppointmentMutation()
+    const [addAppointment, add] = useAddAppointmentMutation()
     const { data, isLoading, isFetching } = useGetAppointmentByIdQuery(id || "", {
         skip: !id || !navigator.onLine
     })
-    const [updateAppointment, { data: updateData, isLoading: updateLoading, error: updateError, isSuccess: isUpdateSuccess, isError: isUpdateError }] = useUpdateAppointmentMutation()
+    const [updateAppointment, update] = useUpdateAppointmentMutation()
     const { data: doctors, isSuccess: isDoctorsFetchSuccess } = useGetDoctorsQuery({ isFetchAll: true })
     const { data: patients, isSuccess: isPatientFetchSuccess } = useGetPatientsQuery({ isFetchAll: true, onlyToday: true })
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: id ? "Edit Appointment" : "Add Appointment",
         backLink: "../",
-    }
+    }), [id])
 
-    const fields: FieldConfig[] = [
+    const fields: any[] = useMemo(() => [
         {
             name: "doctor",
             placeholder: "Doctor",
@@ -108,8 +108,8 @@ const AddAppointment = () => {
                     placeholder: "Select Payment Status",
                     type: "select",
                     options: [
-                        { label: "paid", name: "paid", value: "paid" },
-                        { label: "unpaid", name: "unpaid", value: "unpaid" }
+                        { label: "paid", value: "paid" },
+                        { label: "unpaid", value: "unpaid" }
                     ],
                     size: { xs: 12, sm: 6, lg: 4 },
                     rules: { required: false }
@@ -140,7 +140,7 @@ const AddAppointment = () => {
             rules: {}
         },
 
-    ];
+    ], [doctorOptions, patientOptions])
 
     const defaultValues = {
         patient: "",
@@ -161,34 +161,30 @@ const AddAppointment = () => {
         button: ""
     }
 
-    // Custom Validator
-    const schema = customValidator(fields)
-
-    type FormValues = z.infer<typeof schema>
-
     // Submit Function
-    const onSubmit = (data: FormValues) => {
+    const onSubmit = useCallback(
+        (data: z.infer<ReturnType<typeof customValidator>>) => {
 
-        const appointmentData = data as IAppointment
+            const appointmentData = data as IAppointment
 
-        if (appointment && appointment._id) {
-            if (navigator.onLine) {
-                updateAppointment({ appointmentData, id: appointment._id })
+            if (appointment && appointment._id) {
+                if (navigator.onLine) {
+                    updateAppointment({ appointmentData, id: appointment._id })
+                } else {
+                    idbHelpers.update({ storeName: "appointments", endpoint: "appointment/update-appointment", _id: appointment._id, data })
+                }
             } else {
-                idbHelpers.update({ storeName: "appointments", endpoint: "appointment/update-appointment", _id: appointment._id, data })
+                if (navigator.onLine) {
+                    addAppointment(appointmentData)
+                } else {
+                    idbHelpers.add({ storeName: "appointments", endpoint: "appointment/create-appointment", data })
+                }
             }
-        } else {
-            if (navigator.onLine) {
-                addAppointment(appointmentData)
-            } else {
-                idbHelpers.add({ storeName: "appointments", endpoint: "appointment/create-appointment", data })
-            }
-        }
-    }
+        }, [appointment, addAppointment, updateAppointment])
 
     // Dynamic Form
     const { renderSingleInput, handleSubmit, setValue, reset }
-        = useDynamicForm({ schema, fields, onSubmit, defaultValues })
+        = useDynamicForm({ schema: customValidator(fields), fields, onSubmit, defaultValues })
 
     useEffect(() => {
         if (isDoctorsFetchSuccess) {
@@ -255,29 +251,17 @@ const AddAppointment = () => {
     }, [id, appointment])
 
     useEffect(() => {
-        if (isAddSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/appointments")
-            }, 2000);
+        if (add.isSuccess || update.isSuccess) {
+            const timeout = setTimeout(() => navigate('/appointments'), 2000)
             return () => clearTimeout(timeout)
         }
-    }, [isAddSuccess])
-
-    useEffect(() => {
-        if (isUpdateSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/appointments")
-            }, 2000);
-            return () => clearTimeout(timeout)
-        }
-    }, [isUpdateSuccess])
+    }, [add.isSuccess, update.isSuccess, navigate])
 
     return <>
-        {isAddSuccess && <Toast type="success" message={addData?.message} />}
-        {isAddError && <Toast type="error" message={addError as string} />}
-
-        {isUpdateSuccess && <Toast type={updateData === "No Changes Detected" ? "info" : "success"} message={updateData as string} />}
-        {isUpdateError && <Toast type="error" message={updateError as string} />}
+        {add.isSuccess && <Toast type="success" message={add.data?.message} />}
+        {add.isError && <Toast type="error" message={String(add.error)} />}
+        {update.isSuccess && <Toast type={update.data === 'No Changes Detected' ? 'info' : 'success'} message={update.data} />}
+        {update.isError && <Toast type="error" message={String(update.error)} />}
 
         <Box>
             <DataContainer config={config} />
@@ -338,7 +322,7 @@ const AddAppointment = () => {
                             Reset
                         </Button>
                         <Button
-                            loading={id ? updateLoading : addLoading}
+                            loading={add.isLoading || update.isLoading}
                             type='submit'
                             variant='contained'
                             sx={{ ml: 2, background: "#0777de", color: "white", py: 0.65 }}>
@@ -349,7 +333,7 @@ const AddAppointment = () => {
             </Paper >
         </Box>
     </>
-}
+})
 
 export default AddAppointment
 

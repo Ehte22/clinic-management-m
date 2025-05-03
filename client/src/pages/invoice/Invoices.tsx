@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import Loader from "../../components/Loader";
 import { format } from "date-fns";
@@ -11,7 +11,7 @@ import { Chip, Paper, Stack } from "@mui/material";
 import { IInvoice } from "../../models/invoice.interface";
 import { useDeleteInvoiceMutation, useGetInvoicesQuery, useUpdateInvoiceStatusMutation } from "../../redux/apis/invoiceApi";
 
-const Invoices = () => {
+const Invoices = React.memo(() => {
 
     // Hooks
     const [invoices, setInvoices] = useState<IInvoice[]>([])
@@ -21,7 +21,7 @@ const Invoices = () => {
 
     const debouncedSearchQuery = useDebounce(searchQuery, 500)
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: "Invoices",
         showAddBtn: true,
         showRefreshButton: true,
@@ -29,7 +29,7 @@ const Invoices = () => {
         showSelector: true,
         onSearch: setSearchQuery,
         onSelect: setSelectedClinic
-    }
+    }), [setSearchQuery, setSelectedClinic])
 
     // Queries and Mutations
     const { data, isLoading, isSuccess } = useGetInvoicesQuery({
@@ -38,10 +38,10 @@ const Invoices = () => {
         searchQuery: debouncedSearchQuery.toLowerCase(),
         selectedClinic
     })
-    const [deleteMedicine, { data: message, isSuccess: isDeleteSuccess }] = useDeleteInvoiceMutation()
+    const [deleteInvoice, { data: message, isSuccess: isDeleteSuccess }] = useDeleteInvoiceMutation()
     const [updateStatus, { data: statusMessage, error: statusError, isSuccess: statusUpdateSuccess, isError: statusUpdateError }] = useUpdateInvoiceStatusMutation()
 
-    const columns: GridColDef[] = [
+    const columns: GridColDef[] = useMemo(() => [
         { field: 'serialNo', headerName: 'Sr. No.', minWidth: 70, flex: 0.4 },
         { field: 'invoiceNumber', headerName: 'Invoice Number', minWidth: 150, flex: 0.8 },
         {
@@ -80,11 +80,11 @@ const Invoices = () => {
             filterable: false,
             renderCell: (params) => {
                 return <>
-                    <ActionsMenu id={params.row._id} deleteAction={deleteMedicine} />
+                    <ActionsMenu id={params.row._id} deleteAction={deleteInvoice} />
                 </>
             }
         }
-    ];
+    ], [updateStatus, deleteInvoice])
 
     const fetchData = async () => {
         const offlineData = await idbHelpers.getAll({ storeName: "invoices" });
@@ -101,7 +101,11 @@ const Invoices = () => {
 
     useEffect(() => {
         fetchData();
-    }, [isSuccess, data]);
+    }, [isSuccess, data, selectedClinic]);
+
+    const handlePaginationChange = useCallback((params: { page: number, pageSize: number }) => {
+        setPagination({ page: params.page, pageSize: params.pageSize });
+    }, [])
 
     if (isLoading) {
         return <Loader />
@@ -109,8 +113,8 @@ const Invoices = () => {
 
     return <>
         {statusUpdateSuccess && <Toast type="success" message={statusMessage} />}
-        {statusUpdateError && <Toast type="error" message={statusError as string} />}
-        {isDeleteSuccess && <Toast type='success' message={message as string} />}
+        {statusUpdateError && <Toast type="error" message={String(statusError)} />}
+        {isDeleteSuccess && <Toast type='success' message={message} />}
         <DataContainer config={config} />
         <Paper sx={{ width: '100%', mt: 2 }}>
             <DataGrid
@@ -122,13 +126,11 @@ const Invoices = () => {
                 pageSizeOptions={[5, 10, 20, 50]}
                 paginationModel={{ page: pagination.page, pageSize: pagination.pageSize }}
                 getRowId={(row) => row._id}
-                onPaginationModelChange={(params) => {
-                    setPagination({ page: params.page, pageSize: params.pageSize })
-                }}
+                onPaginationModelChange={handlePaginationChange}
                 sx={{ border: 0 }}
             />
         </Paper >
     </>
-}
+})
 
 export default Invoices

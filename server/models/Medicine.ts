@@ -25,7 +25,7 @@ const medicineSchema: Schema<IMedicalStock> = new mongoose.Schema<IMedicalStock>
     medicineName: { type: String, required: true },
     expiryDate: { type: Date, required: true },
     stock: { type: Number, required: true },
-    label: { type: String, required: true },
+    label: { type: String, },
     category: { type: String, required: true },
     mg: { type: Number, required: true },
     price: { type: Number, required: true },

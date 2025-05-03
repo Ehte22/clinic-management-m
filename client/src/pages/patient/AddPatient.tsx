@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import useDynamicForm, { FieldConfig } from "../../hooks/useDynamicForm"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
+import useDynamicForm from "../../hooks/useDynamicForm"
 import { customValidator } from "../../utils/validator"
 import { useNavigate, useParams } from "react-router-dom"
 import { z } from "zod"
@@ -14,7 +14,7 @@ const socket = io(import.meta.env.VITE_BACKEND_URL, {
     transports: ["polling"]
 })
 
-const AddPatient = () => {
+const AddPatient = React.memo(() => {
     const [patient, setPatient] = useState<IPatient | null>(null)
 
     // Hooks
@@ -22,18 +22,18 @@ const AddPatient = () => {
     const navigate = useNavigate()
 
     // Queries and Mutations
-    const [addPatient, { data: addData, isLoading: addLoading, error: addError, isSuccess: isAddSuccess, isError: isAddError }] = useAddPatientMutation()
+    const [addPatient, add] = useAddPatientMutation()
     const { data, isLoading, isFetching } = useGetPatientByIdQuery(id || "", {
         skip: !id || !navigator.onLine
     })
-    const [updatePatient, { data: updateData, isLoading: updateLoading, error: updateError, isSuccess: isUpdateSuccess, isError: isUpdateError }] = useUpdatePatientMutation()
+    const [updatePatient, update] = useUpdatePatientMutation()
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: id ? "Edit Patient" : "Add Patient",
         backLink: "../",
-    }
+    }), [id])
 
-    const fields: FieldConfig[] = [
+    const fields: any = useMemo(() => [
         {
             name: "name",
             type: "text",
@@ -163,7 +163,7 @@ const AddPatient = () => {
             rules: {},
         },
 
-    ]
+    ], [])
 
     const defaultValues = {
         name: "",
@@ -188,13 +188,7 @@ const AddPatient = () => {
         },
     }
 
-    // Custom Validator
-    const schema = customValidator(fields)
-
-    type FormValues = z.infer<typeof schema>
-
-    // Submit Function
-    const onSubmit = (data: FormValues) => {
+    const onSubmit = useCallback((data: z.infer<ReturnType<typeof customValidator>>) => {
 
         if (patient && patient._id) {
             if (navigator.onLine) {
@@ -210,14 +204,13 @@ const AddPatient = () => {
                 idbHelpers.add({ storeName: "patients", endpoint: "patient/create-patient", data: { ...data, status: "active" } })
             }
         }
-    }
+    }, [patient, addPatient, updatePatient, socket])
 
     // Dynamic Form
     const { renderSingleInput, handleSubmit, setValue, reset, watch, disableField }
-        = useDynamicForm({ schema, fields, onSubmit, defaultValues })
+        = useDynamicForm({ schema: customValidator(fields), fields, onSubmit, defaultValues })
 
     const { dateOfBirth } = watch()
-
 
     useEffect(() => {
         if (id) {
@@ -268,29 +261,17 @@ const AddPatient = () => {
     }, [id, patient])
 
     useEffect(() => {
-        if (isAddSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/patients")
-            }, 2000);
+        if (add.isSuccess || update.isSuccess) {
+            const timeout = setTimeout(() => navigate('/patients'), 2000)
             return () => clearTimeout(timeout)
         }
-    }, [isAddSuccess])
-
-    useEffect(() => {
-        if (isUpdateSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/patients")
-            }, 2000);
-            return () => clearTimeout(timeout)
-        }
-    }, [isUpdateSuccess])
+    }, [add.isSuccess, update.isSuccess, navigate])
 
     return <>
-        {isAddSuccess && <Toast type="success" message={addData?.message} />}
-        {isAddError && <Toast type="error" message={addError as string} />}
-
-        {isUpdateSuccess && <Toast type={updateData === "No Changes Detected" ? "info" : "success"} message={updateData as string} />}
-        {isUpdateError && <Toast type="error" message={updateError as string} />}
+        {add.isSuccess && <Toast type="success" message={add.data?.message} />}
+        {add.isError && <Toast type="error" message={String(add.error)} />}
+        {update.isSuccess && <Toast type={update.data === 'No Changes Detected' ? 'info' : 'success'} message={update.data} />}
+        {update.isError && <Toast type="error" message={String(update.error)} />}
 
         <Box>
             <DataContainer config={config} />
@@ -356,7 +337,7 @@ const AddPatient = () => {
                             Reset
                         </Button>
                         <Button
-                            loading={id ? updateLoading : addLoading}
+                            loading={add.isLoading || update.isLoading}
                             type='submit'
                             variant='contained'
                             sx={{ ml: 2, background: "#0777de", color: "white", py: 0.65 }}>
@@ -367,7 +348,7 @@ const AddPatient = () => {
             </Paper >
         </Box>
     </>
-}
+})
 
 export default AddPatient
 

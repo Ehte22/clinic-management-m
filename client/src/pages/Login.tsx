@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import React, { useCallback, useEffect, useMemo } from "react"
 import { FieldConfig } from "../hooks/useDynamicForm"
 import { useSignInMutation } from "../redux/apis/auth.api"
 import { customValidator } from "../utils/validator"
@@ -40,28 +40,28 @@ const textFieldStyles = {
     },
 };
 
-const fields: FieldConfig[] = [
-    {
-        name: "email",
-        label: "Email Address",
-        type: "text",
-        placeholder: "Enter Your Email",
-        rules: { required: true, email: true }
-    },
-    {
-        name: "password",
-        label: "Password",
-        type: "password",
-        placeholder: "Enter Your Password",
-        rules: { required: true }
-    },
-]
-
-const Login = () => {
+const Login = React.memo(() => {
     const [signIn, { data, error, isSuccess, isError, isLoading }] = useSignInMutation()
 
     const navigate = useNavigate()
     const { user } = useSelector((state: RootState) => state.auth)
+
+    const fields: FieldConfig[] = useMemo(() => [
+        {
+            name: "email",
+            label: "Email Address",
+            type: "text",
+            placeholder: "Enter Your Email",
+            rules: { required: true, email: true }
+        },
+        {
+            name: "password",
+            label: "Password",
+            type: "password",
+            placeholder: "Enter Your Password",
+            rules: { required: true }
+        },
+    ], [])
 
     const schema = customValidator(fields)
 
@@ -69,9 +69,9 @@ const Login = () => {
 
     const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } })
 
-    const onSubmit = (values: FormValues) => {
+    const onSubmit = useCallback((values: FormValues) => {
         signIn({ email: values.email, password: values.password })
-    }
+    }, [signIn])
 
     useEffect(() => {
         if (isSuccess) {
@@ -96,7 +96,7 @@ const Login = () => {
 
     return <>
         {isSuccess && <Toast type="success" message={data.message} />}
-        {isError && <Toast type="error" message={error as string} />}
+        {isError && <Toast type="error" message={String(error)} />}
         <Container
             component="main"
             maxWidth={false}
@@ -157,7 +157,7 @@ const Login = () => {
         </Container>
     </>
 
-}
+})
 
 
 export default Login

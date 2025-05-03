@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import useDynamicForm, { FieldConfig } from "../../hooks/useDynamicForm"
 import { customValidator } from "../../utils/validator"
 import { useNavigate, useParams } from "react-router-dom"
@@ -10,7 +10,7 @@ import Toast from "../../components/Toast"
 import { ISupplier } from "../../models/supplier.interface"
 import { useAddSupplierMutation, useGetSupplierByIdQuery, useUpdateSupplierMutation } from "../../redux/apis/supplier.api"
 
-const AddMedicine = () => {
+const AddMedicine = React.memo(() => {
     const [supplier, setSupplier] = useState<ISupplier | null>(null)
 
     // Hooks
@@ -18,18 +18,18 @@ const AddMedicine = () => {
     const navigate = useNavigate()
 
     // Queries and Mutations
-    const [addSupplier, { data: addData, isLoading: addLoading, error: addError, isSuccess: isAddSuccess, isError: isAddError }] = useAddSupplierMutation()
+    const [addSupplier, add] = useAddSupplierMutation()
     const { data, isLoading, isFetching } = useGetSupplierByIdQuery(id || "", {
         skip: !id || !navigator.onLine
     })
-    const [updateSupplier, { data: updateData, isLoading: updateLoading, error: updateError, isSuccess: isUpdateSuccess, isError: isUpdateError }] = useUpdateSupplierMutation()
+    const [updateSupplier, update] = useUpdateSupplierMutation()
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: id ? "Edit Supplier" : "Add Supplier",
         backLink: "../",
-    }
+    }), [id])
 
-    const fields: FieldConfig[] = [
+    const fields: FieldConfig[] = useMemo(() => [
         {
             name: "name",
             placeholder: "Name",
@@ -90,8 +90,8 @@ const AddMedicine = () => {
                 },
             },
             rules: {}
-        },
-    ]
+        }
+    ], [])
 
     const defaultValues: ISupplier = {
         name: "",
@@ -105,13 +105,8 @@ const AddMedicine = () => {
         },
     }
 
-    // Custom Validator
-    const schema = customValidator(fields)
-
-    type FormValues = z.infer<typeof schema>
-
     // Submit Function
-    const onSubmit = (data: FormValues) => {
+    const onSubmit = useCallback((data: z.infer<ReturnType<typeof customValidator>>) => {
 
         const supplierData = data as ISupplier
 
@@ -128,11 +123,11 @@ const AddMedicine = () => {
                 idbHelpers.add({ storeName: "suppliers", endpoint: "supplier/create-supplier", data: supplierData })
             }
         }
-    }
+    }, [supplier, addSupplier, updateSupplier])
 
     // Dynamic Form
     const { renderSingleInput, handleSubmit, setValue, reset }
-        = useDynamicForm({ schema, fields, onSubmit, defaultValues })
+        = useDynamicForm({ schema: customValidator(fields), fields, onSubmit, defaultValues })
 
     useEffect(() => {
         if (id) {
@@ -161,29 +156,17 @@ const AddMedicine = () => {
     }, [id, supplier])
 
     useEffect(() => {
-        if (isAddSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/suppliers")
-            }, 2000);
+        if (add.isSuccess || update.isSuccess) {
+            const timeout = setTimeout(() => navigate('/suppliers'), 2000)
             return () => clearTimeout(timeout)
         }
-    }, [isAddSuccess])
-
-    useEffect(() => {
-        if (isUpdateSuccess) {
-            const timeout = setTimeout(() => {
-                navigate("/suppliers")
-            }, 2000);
-            return () => clearTimeout(timeout)
-        }
-    }, [isUpdateSuccess])
+    }, [add.isSuccess, update.isSuccess, navigate])
 
     return <>
-        {isAddSuccess && <Toast type="success" message={addData?.message} />}
-        {isAddError && <Toast type="error" message={addError as string} />}
-
-        {isUpdateSuccess && <Toast type={updateData === "No Changes Detected" ? "info" : "success"} message={updateData as string} />}
-        {isUpdateError && <Toast type="error" message={updateError as string} />}
+        {add.isSuccess && <Toast type="success" message={add.data?.message} />}
+        {add.isError && <Toast type="error" message={String(add.error)} />}
+        {update.isSuccess && <Toast type={update.data === 'No Changes Detected' ? 'info' : 'success'} message={update.data} />}
+        {update.isError && <Toast type="error" message={String(update.error)} />}
 
         <Box>
             <DataContainer config={config} />
@@ -224,7 +207,7 @@ const AddMedicine = () => {
                             Reset
                         </Button>
                         <Button
-                            loading={id ? updateLoading : addLoading}
+                            loading={add.isLoading || update.isLoading}
                             type='submit'
                             variant='contained'
                             sx={{ ml: 2, background: "#0777de", color: "white", py: 0.65 }}>
@@ -235,7 +218,7 @@ const AddMedicine = () => {
             </Paper >
         </Box>
     </>
-}
+})
 
 export default AddMedicine
 

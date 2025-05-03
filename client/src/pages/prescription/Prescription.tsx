@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { customValidator } from "../../utils/validator";
 import useDynamicForm, { FieldConfig } from "../../hooks/useDynamicForm";
 import PrescriptionTable from "./PrescriptionTable";
@@ -18,22 +18,22 @@ const socket = io(import.meta.env.VITE_BACKEND_URL, {
     transports: ["polling"]
 })
 
-const Prescription = () => {
+const Prescription = React.memo(() => {
 
     const [patientOptions, setPatientOptions] = useState<{ label?: string, value?: string, disabled?: boolean }[]>([]);
     const [open, setOpen] = useState(false)
     const [allMedicines, setAllMedicines] = useState<IMedicine[]>([])
     const [patient, setPatient] = useState<IPatient | null>(null)
 
-    const config: DataContainerConfig = {
+    const config: DataContainerConfig = useMemo(() => ({
         pageTitle: "Prescription",
-    }
+    }), [])
 
-    const [addPrescription, { data: addData, isLoading: addLoading, error: addError, isSuccess: isAddSuccess, isError: isAddError }] = useAddPrescriptionMutation()
-    const { data: patients, isSuccess: isPatientsFetchSuccess } = useGetPatientsQuery({ isFetchAll: true })
+    const [addPrescription, add] = useAddPrescriptionMutation()
+    const { data: patients, isSuccess: isPatientsFetchSuccess } = useGetPatientsQuery({ isFetchAll: true, onlyToday: true })
     const { data: medicines, isSuccess: isMedicineFetchSuccess } = useGetMedicinesQuery({ isFetchAll: true })
 
-    const fields: FieldConfig[] = [
+    const fields: FieldConfig[] = useMemo(() => [
         {
             name: "patient",
             placeholder: "Patient",
@@ -177,7 +177,7 @@ const Prescription = () => {
             type: "textarea",
             rules: { required: false },
         },
-    ];
+    ], [patientOptions])
 
     const defaultValues = {
         patient: "",
@@ -206,18 +206,16 @@ const Prescription = () => {
 
     };
 
-    const schema = customValidator(fields);
-
-    const onSubmit = (data: any) => {
+    const onSubmit = useCallback((data: any) => {
         if (navigator.onLine) {
             addPrescription(data)
         } else {
             idbHelpers.add({ storeName: "prescriptions", endpoint: "prescription/create", data })
         }
-    };
+    }, [addPrescription])
 
     const { renderSingleInput, handleSubmit, setValue, watch, reset, disableField } = useDynamicForm({
-        schema, fields, onSubmit, defaultValues
+        schema: customValidator(fields), fields, onSubmit, defaultValues
     })
 
     const values = watch()
@@ -241,14 +239,14 @@ const Prescription = () => {
     }, [isMedicineFetchSuccess, medicines])
 
     useEffect(() => {
-        socket.on("update-patients", (data) => {
-            const newPatient = { label: data.name, value: data.name };
-            setPatientOptions((prev) => [...prev, newPatient])
-        })
+        socket.on('add-patient', (patient) => {
+            const newPatient = { label: patient.name, value: patient._id }
+            setPatientOptions((prev) => [newPatient, ...prev])
+        });
 
         return () => {
-            socket.off("update-patients")
-        }
+            socket.off('add-patient');
+        };
     }, [])
 
     useEffect(() => {
@@ -269,8 +267,9 @@ const Prescription = () => {
     }, [values.patient])
 
     return <>
-        {isAddSuccess && <Toast type="success" message={addData?.message} />}
-        {isAddError && <Toast type="error" message={addError as string} />}
+        {add.isSuccess && <Toast type="success" message={add.data?.message} />}
+        {add.isError && <Toast type="error" message={String(add.error)} />}
+
         <Box>
             <DataContainer config={config} />
             <Paper sx={{ mt: 2, pt: 4, pb: 3 }}>
@@ -364,7 +363,7 @@ const Prescription = () => {
                             Reset
                         </Button>
                         <Button
-                            loading={addLoading}
+                            loading={add.isLoading}
                             type='submit'
                             variant='contained'
                             sx={{ ml: 2, background: "#0777de", color: "white", py: 0.65 }}>
@@ -379,6 +378,6 @@ const Prescription = () => {
         {values.patient && <PrescriptionTable allMedicines={watch("medical")} patientData={patient as IPatient} />}
     </>
 
-};
+})
 
 export default Prescription;

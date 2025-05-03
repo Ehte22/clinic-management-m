@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGetClinicAdminDashboardDataQuery } from '../redux/apis/dashboard.api';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -25,7 +25,7 @@ ChartJS.register(
     Legend
 );
 
-const UserDashBoard = () => {
+const UserDashBoard = React.memo(() => {
 
     const [incomeData, setIncomeData] = useState<any>([]);
     const [patientData, setPatientData] = useState<any>([]);
@@ -153,6 +153,6 @@ const UserDashBoard = () => {
         </Box>
 
     </>
-};
+})
 
 export default UserDashBoard;
